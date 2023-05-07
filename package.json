@@ -1,0 +1,10 @@
+{
+  "name": "neos-fusion-ls",
+  "version": "0.0.1",
+  "description": "NEOS Fusion Language Server",
+  "main": "out/server.js",
+  "repository": "git@github.com:sjsone/neos-fusion-ls.git",
+  "author": "Simon Schmidt <simon@sjs.one>",
+  "license": "AGPL-3.0-or-later",
+  "private": false
+}

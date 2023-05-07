@@ -1,0 +1,6 @@
+out
+node_modules
+client/server
+.DS_Store
+*.vsix
+*.cpuprofile
