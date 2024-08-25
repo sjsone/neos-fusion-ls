@@ -8,6 +8,8 @@ yarn.lock
 .gitignore
 .gitignore
 node_modules
+.vscode
+out/*.js.map
 
 ## Debug
 *.log
@@ -15,3 +17,5 @@ node_modules
 
 ## OS
 .DS_Store
+*.zip
+*.tgz
