@@ -1,0 +1,17 @@
+## Source
+src/
+data/
+
+## Tools
+tsconfig.json
+yarn.lock
+.gitignore
+.gitignore
+node_modules
+
+## Debug
+*.log
+*.cpuprofile
+
+## OS
+.DS_Store
