@@ -9,6 +9,7 @@
     "engines": {
         "node": "*"
     },
+    "bin": "out/main.js",
     "dependencies": {
         "fast-xml-parser": "^4.2.4",
         "ts-fusion-parser": "^0.1.44",
@@ -18,6 +19,7 @@
         "yaml": "^2.2.1"
     },
     "scripts": {
+        "prepublishOnly": "rm -rf out/main.js && yarn run esbuild",
         "esbuild-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
         "esbuild": "yarn run esbuild-base --minify",
         "esbuild-without-minify": "yarn run esbuild-base --sourcemap",
