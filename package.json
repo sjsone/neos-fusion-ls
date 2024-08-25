@@ -11,16 +11,17 @@
     },
     "dependencies": {
         "fast-xml-parser": "^4.2.4",
-        "ts-fusion-parser": "^0.1.44",
+        "ts-fusion-parser": "^0.2.2",
+        "ts-fusion-runtime": "^0.2.5",
         "vscode-languageserver": "^8.0.0",
         "vscode-languageserver-textdocument": "^1.0.7",
         "vscode-uri": "^3.0.8",
         "yaml": "^2.3.4"
     },
     "scripts": {
-        "esbuild-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
-        "esbuild": "yarn run esbuild-base --minify",
-        "esbuild-without-minify": "yarn run esbuild-base --sourcemap",
-        "esbuild-watch": "yarn run esbuild-base --sourcemap --watch"
+        "build:base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
+        "build:minify": "yarn run build:base --minify",
+        "build:no-minify": "yarn run build:base --sourcemap",
+        "watch": "yarn run build:base --sourcemap --watch"
     }
 }
