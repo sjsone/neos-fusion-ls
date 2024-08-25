@@ -231,7 +231,7 @@ export class HoverCapability extends AbstractCapability {
 			'##### Signature:',
 			'```php',
 			`<?php`,
-			`${method.name}(${phpParameters})${method.returnType ? ': ' + method.returnType : ''}`,
+			`${method.name}(${phpParameters})${method.returns?.type ? ': ' + method.returns.type : ''}`,
 			`?>`,
 			'```'
 		].join('\n')

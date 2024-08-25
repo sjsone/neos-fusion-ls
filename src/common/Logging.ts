@@ -18,9 +18,9 @@ class LogService {
 const logServiceInstance = new LogService()
 export { logServiceInstance as LogService, LogService as LogServiceClass }
 
-type LoggingBackend = (level: string, name: string, ...things: any[]) => void
+type LoggingBackend = (level: string, name: string, things: any[]) => void
 
-const loggingBackendConsole: LoggingBackend = (level: string, name: string, ...things: any[]) => {
+const loggingBackendConsole: LoggingBackend = (level: string, name: string, things: any[]) => {
 	console.log(`[${level.padStart(7, " ")}] <${(new Date()).toISOString()}> [${name}]`, ...things)
 }
 
