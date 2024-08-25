@@ -25,7 +25,7 @@ class ConfigurationFileInvalidJsonError extends ConfigurationFileError {
 }
 
 const fileLoggingBackend = (loggingFilePath: string) => (level: string, name: string, ...things: any[]) => {
-	NodeFs.appendFileSync(loggingFilePath, `[${level.padStart(7, " ")}] <${(new Date()).toISOString()}> [${name}] ` + (things[0] ?? ""))
+	NodeFs.appendFileSync(loggingFilePath, `[${level.padStart(7, " ")}] <${(new Date()).toISOString()}> [${name}] ${(things[0] ?? "")}\n`)
 }
 
 export class IntelliJClient extends GenericClient {
