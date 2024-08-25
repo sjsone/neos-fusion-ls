@@ -43,8 +43,10 @@ import { AbstractLanguageFeature } from './languageFeatures/AbstractLanguageFeat
 import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
+import { ParsedYaml } from './neos/FlowConfigurationFile'
 import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatureContext'
 import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
+import { Client } from './client/Client'
 
 
 const CodeActions = [
@@ -64,16 +66,19 @@ const FileChangeHandlerTypes: Array<new (...args: any[]) => AbstractFileChangeHa
 
 export class LanguageServer extends Logger {
 
-	protected connection: _Connection
-	protected documents: TextDocuments<FusionDocument>
 	public fusionWorkspaces: FusionWorkspace[] = []
 	protected clientCapabilityService!: ClientCapabilityService
 
 	protected functionalityInstances: Map<new (...args: any[]) => AbstractFunctionality, AbstractFunctionality> = new Map()
 	protected fileChangeHandlerInstances: Map<new (...args: any[]) => AbstractFileChangeHandler, AbstractFileChangeHandler> = new Map()
 
-	constructor(connection: _Connection, documents: TextDocuments<FusionDocument>) {
+	constructor(protected connection: _Connection, protected documents: TextDocuments<FusionDocument>, public client: Client) {
 		super()
+
+		Client.SetLanguageServer(this.client, this)
+
+		this.logInfo("Client: " + this.client.getInfo())
+
 		this.connection = connection
 		this.documents = documents
 
@@ -136,7 +141,7 @@ export class LanguageServer extends Logger {
 	}
 
 	public onInitialize(params: InitializeParams): InitializeResult {
-		this.logVerbose("onInitialize")
+		this.logVerbose("onInitialize", params)
 
 		for (const workspaceFolder of params.workspaceFolders ?? []) {
 			const fusionWorkspace = new FusionWorkspace(workspaceFolder.name, workspaceFolder.uri, this)
@@ -147,6 +152,26 @@ export class LanguageServer extends Logger {
 
 		this.clientCapabilityService = new ClientCapabilityService(params.capabilities)
 
+		this.connection.onNotification("custom/flowContext/set", ({ selectedContextName }) => {
+			this.logInfo(`Setting FusionContext to "${selectedContextName}"`)
+			for (const fusionWorkspace of this.fusionWorkspaces) {
+				// TODO: make the whole Context/Configuration thing better 
+				fusionWorkspace.setSelectedFlowContextName(selectedContextName)
+				fusionWorkspace.neosWorkspace.configurationManager.rebuildConfiguration()
+				fusionWorkspace.languageServer.sendFlowConfiguration(fusionWorkspace.neosWorkspace.configurationManager['mergedConfiguration'])
+			}
+		})
+
+		this.connection.onRequest("custom/neosContexts/get", () => {
+			const contexts = this.fusionWorkspaces[0].neosWorkspace.configurationManager.getContexts()
+			if (!contexts) return
+
+			const selectedContext = this.fusionWorkspaces[0].neosWorkspace.configurationManager.getContextPath()
+			return contexts.map(context => ({ context, selected: selectedContext === context }))
+		})
+
+		this.client.onInitialize(params)
+
 		return {
 			capabilities: {
 				inlayHintProvider: true,
@@ -156,7 +181,7 @@ export class LanguageServer extends Logger {
 				},
 				textDocumentSync: {
 					// TODO: Make `params.initializationOptions` optional by defining some kind of default
-					openClose: params.initializationOptions.textDocumentSync.openClose,
+					openClose: params?.initializationOptions?.textDocumentSync?.openClose ?? true,
 					change: TextDocumentSyncKind.Full
 				},
 				codeActionProvider: true,
@@ -209,8 +234,16 @@ export class LanguageServer extends Logger {
 		return this.connection.sendNotification("custom/progressNotification/update", { id, payload })
 	}
 
+	public sendRootComposerJsonNotFound(path: string) {
+		return this.connection.sendNotification("custom/error/rootComposerNotFound", { path });
+	}
+
 	public sendProgressNotificationFinish(id: string) {
 		return this.connection.sendNotification("custom/progressNotification/finish", { id })
+	}
+
+	public sendFlowConfiguration(flowConfiguration: ParsedYaml) {
+		return this.connection.sendNotification("custom/flowConfiguration/update", { flowConfiguration })
 	}
 
 	public sendDiagnostics(params: PublishDiagnosticsParams) {
@@ -218,26 +251,7 @@ export class LanguageServer extends Logger {
 	}
 
 	public async onDidChangeConfiguration(params: DidChangeConfigurationParams) {
-		const configuration: ExtensionConfiguration = params.settings.neosFusionLsp
-		Object.freeze(configuration)
-
-		await this.sendBusyCreate('reload', {
-			busy: true,
-			text: "$(rocket)",
-			detail: "initializing language server",
-			name: "initializing"
-		})
-
-		LogService.setLogLevel(configuration.logging.level)
-
-		this.logVerbose("Configuration: " + JSON.stringify(configuration))
-		for (const fusionWorkspace of this.fusionWorkspaces) {
-			fusionWorkspace.init(configuration)
-		}
-
-		clearLineDataCache()
-
-		await this.sendBusyDispose('reload')
+		return this.client.onDidChangeConfiguration(params)
 	}
 
 	public async onDidChangeWatchedFiles(params: DidChangeWatchedFilesParams) {
@@ -261,6 +275,5 @@ export class LanguageServer extends Logger {
 		}
 		return actions
 	}
-
 }
 

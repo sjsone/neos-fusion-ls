@@ -1,12 +1,15 @@
 import { LinePosition } from '../common/LinePositionedNode'
 
-export interface PhpMethodParameter {
+
+export interface PhpTypeWithDescription {
+	type?: string
+	description?: string
+}
+export interface PhpMethodParameter extends PhpTypeWithDescription {
 	name: string,
 	defaultValue?: string
 	spread: boolean,
-	type?: string
 }
-
 
 export class PhpMethod {
 	constructor(

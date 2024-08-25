@@ -2,7 +2,7 @@ import * as NodeFs from "fs"
 import * as NodePath from "path"
 import { getLineNumberOfChar, pathToUri } from '../common/util'
 import { EelHelperMethod } from '../eel/EelHelperMethod'
-import { PhpMethodParameter } from '../eel/PhpMethod'
+import { PhpMethodParameter, PhpTypeWithDescription } from '../eel/PhpMethod'
 
 export interface ClassDefinition {
 	uri: string
@@ -89,7 +89,7 @@ export class NeosPackageNamespace {
 			methods.push(new EelHelperMethod(name, description, parameters, returnType, {
 				start: getLineNumberOfChar(phpFileSource, identifierIndex, fileUri),
 				end: getLineNumberOfChar(phpFileSource, identifierIndex + fullDefinition.length, fileUri)
-			}))
+			}, returns))
 
 			lastIndex = identifierIndex + fullDefinition.length
 			match = methodsRegex.exec(rest)
@@ -144,12 +144,16 @@ export class NeosPackageNamespace {
 		return parameters
 	}
 
-	protected parseMethodComment(offset: number, code: string) {
+	protected parseMethodComment(offset: number, code: string, debug: boolean = false) {
 		const reversed = code.substring(0, offset).split('').reverse().join('')
+
 		const reversedDescriptionRegex = /^\s*\/\*([\s\S]*?)\s*\*\*\//
 		const reversedDescriptionMatch = reversedDescriptionRegex.exec(reversed)
 
+		const typeWithDescriptionRegex = /^(\w+) *(.*)$/
+
 		const descriptionParts = []
+		let returns: PhpTypeWithDescription | undefined = undefined
 		if (reversedDescriptionMatch) {
 			const fullDocBlock = reversedDescriptionMatch[1].split('').reverse().join('')
 			// const docLineRegex = /^\s*\* *(@\w+)?(.+)?$/gm
@@ -163,7 +167,8 @@ export class NeosPackageNamespace {
 			}
 		}
 		return {
-			description: descriptionParts.join("\n")
+			description: descriptionParts.join("\n"),
+			returns
 		}
 	}
 }

@@ -8,12 +8,15 @@ import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNod
 import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
+import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition'
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
+import * as YAML from 'yaml'
 import { LinePositionedNode } from '../common/LinePositionedNode'
-import { ExternalObjectStatement, NodeService } from '../common/NodeService'
+import { NodeService } from '../common/NodeService'
 import { XLIFFService } from '../common/XLIFFService'
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util'
+import { FlowConfigurationPathPartNode } from '../fusion/FlowConfigurationPathPartNode'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
@@ -22,6 +25,9 @@ import { ResourceUriNode } from '../fusion/node/ResourceUriNode'
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode'
 import { AbstractCapability } from './AbstractCapability'
 import { CapabilityContext, ParsedFileCapabilityContext } from './CapabilityContext'
+import { Nodes } from 'ts-fusion-parser'
+import { MergedArrayTreeService } from '../common/MergedArrayTreeService'
+
 
 export class HoverCapability extends AbstractCapability {
 
@@ -43,15 +49,26 @@ export class HoverCapability extends AbstractCapability {
 		// return `Type: ${node.constructor.name}`
 		this.logVerbose(`FoundNode: ` + node.constructor.name)
 
-		if (node instanceof TranslationShortHandNode) return this.getMarkdownForTranslationShortHandNode(workspace, <LinePositionedNode<TranslationShortHandNode>>foundNodeByLine)
-		if (node instanceof FusionObjectValue) return this.getMarkdownForPrototypeName(workspace, <FusionObjectValue | PrototypePathSegment>node)
-		if (node instanceof PrototypePathSegment) return this.getMarkdownForPrototypeName(workspace, <FusionObjectValue | PrototypePathSegment>node)
-		if (node instanceof PathSegment) return `property **${node.identifier}**`
-		if (node instanceof PhpClassNode) return `EEL-Helper **${node.identifier}**`
-		if (node instanceof ObjectFunctionPathNode) return `EEL-Function **${node.value}**`
-		if (node instanceof ObjectPathNode) return this.getMarkdownForObjectPath(workspace, <LinePositionedNode<ObjectPathNode>>foundNodeByLine)
-		if (node instanceof PhpClassMethodNode) return this.getMarkdownForEelHelperMethod(node, workspace)
-		if (node instanceof ResourceUriNode) return this.getMarkdownForResourceUri(node, workspace)
+		if (node instanceof FlowConfigurationPathPartNode)
+			return this.getMarkdownForFlowConfigurationPathNode(workspace, node)
+		if (node instanceof TranslationShortHandNode)
+			return this.getMarkdownForTranslationShortHandNode(workspace, <LinePositionedNode<TranslationShortHandNode>>foundNodeByLine)
+		if (node instanceof FusionObjectValue)
+			return this.getMarkdownForPrototypeName(workspace, <FusionObjectValue | PrototypePathSegment>node)
+		if (node instanceof PrototypePathSegment)
+			return this.getMarkdownForPrototypeName(workspace, <FusionObjectValue | PrototypePathSegment>node)
+		if (node instanceof PathSegment)
+			return this.getMarkdownForPathSegment(node, workspace)
+		if (node instanceof PhpClassNode)
+			return `EEL-Helper **${node.identifier}**`
+		if (node instanceof ObjectFunctionPathNode)
+			return `EEL-Function **${node.value}**`
+		if (node instanceof ObjectPathNode)
+			return this.getMarkdownForObjectPath(workspace, <LinePositionedNode<ObjectPathNode>>foundNodeByLine)
+		if (node instanceof PhpClassMethodNode)
+			return this.getMarkdownForEelHelperMethod(node, workspace)
+		if (node instanceof ResourceUriNode)
+			return this.getMarkdownForResourceUri(node, workspace)
 
 		return null
 	}
@@ -63,13 +80,46 @@ export class HoverCapability extends AbstractCapability {
 		const otherObjectStatement = findParent(prototypeNode, ObjectStatement)
 		if (!otherObjectStatement?.block) return
 
-		for (const statement of <ObjectStatement[]>otherObjectStatement.block.statementList.statements) {
-			let statementName = statement.path.segments.map(abstractNodeToString).filter(Boolean).join(".")
-			if (statement.operation instanceof ValueAssignment) {
-				statementName += ` = ${abstractNodeToString(statement.operation.pathValue)}`
+		for (const statement of otherObjectStatement.block.statementList.statements) {
+			if (statement instanceof ObjectStatement) {
+				let statementName = statement.path.segments.map(abstractNodeToString).filter(Boolean).join(".")
+				if (statement.operation instanceof ValueAssignment) {
+					statementName += ` = ${abstractNodeToString(statement.operation.pathValue)}`
+				}
+				yield statementName
+				continue
 			}
-			yield statementName
+			if (statement instanceof PropertyDocumentationDefinition) {
+				yield `/// ${statement.type} ${statement.text}`
+			}
 		}
+	}
+
+	getMarkdownForFlowConfigurationPathNode(workspace: FusionWorkspace, partNode: FlowConfigurationPathPartNode) {
+		const node = partNode.parent
+
+		const partIndex = node["path"].indexOf(partNode)
+		if (partIndex === -1) return []
+
+		const pathParts = node["path"].slice(0, partIndex + 1)
+		const searchPath = pathParts.map(part => part["value"]).join(".")
+		this.logDebug("searching for ", searchPath)
+
+		const results: string[] = []
+		for (const result of workspace.neosWorkspace["configurationManager"].search(searchPath)) {
+			const fileUri = result.file["uri"]
+			const neosPackage = workspace.neosWorkspace.getPackageByUri(fileUri)
+			const packageName = neosPackage?.getPackageName() ?? 'Project Configuration'
+			results.push(`# [${packageName}] ${NodePath.basename(fileUri)}`)
+			results.push(YAML.stringify(result.value, undefined, 3))
+		}
+		if (results.length === 0) return `_no value found_`
+
+		return [
+			"```yaml",
+			...results,
+			"```"
+		].join("\n")
 	}
 
 	async getMarkdownForTranslationShortHandNode(workspace: FusionWorkspace, linePositionedNode: LinePositionedNode<TranslationShortHandNode>) {
@@ -137,25 +187,22 @@ export class HoverCapability extends AbstractCapability {
 
 		if ((objectNode.path[0].value !== "this" && objectNode.path[0].value !== "props") || objectNode.path.length < 2) return null
 
-		let segment = NodeService.findPropertyDefinitionSegment(objectNode, workspace, true)
-		if (segment instanceof ExternalObjectStatement) {
-			segment = <PathSegment>segment.statement.path.segments[0]
-		}
+		const externalObjectStatement = NodeService.findPropertyDefinitionSegment(objectNode, workspace, true)
+		const segment = <PathSegment>externalObjectStatement?.statement.path.segments[0]
 		if (segment && segment instanceof PathSegment) {
 			const statement = findParent(segment, ObjectStatement)
 			if (!statement) return null
 			if (!(statement.operation instanceof ValueAssignment)) return null
 
-			const stringified = abstractNodeToString(statement.operation.pathValue)
-			const name = node.value
-			if (stringified !== undefined) {
-				return [
-					`EEL **${name}**`,
-					'```fusion',
-					`${name} = ${stringified}`,
-					'```'
-				].join('\n')
-			}
+			const documentationDefinition = statement.documentationDefinition
+			if (!documentationDefinition) return `EEL **${node.value}**`
+
+			return [
+				documentationDefinition.text,
+				"```fusion",
+				`/// ${documentationDefinition.type}`,
+				"```"
+			].join("\n")
 		}
 
 		return `EEL **${node.value}**`
@@ -201,5 +248,44 @@ export class HoverCapability extends AbstractCapability {
 
 		if (isImage) return `![${basename}](${path})`
 		return `Resource: ${basename}`
+	}
+
+	getMarkdownForPathSegment(node: PathSegment, workspace: FusionWorkspace) {
+		// console.log("Hovering", node.identifier)
+		const objectStatement = findParent(node, ObjectStatement)
+		if (!objectStatement) return null
+
+		const pathForNode = MergedArrayTreeService.buildPathForNode(node).slice(1)
+		// console.log("pathForNode", pathForNode)
+
+		const configurationList = NodeService.getFusionConfigurationListUntilNode(node, workspace)
+		const configuration = configurationList[0]?.configuration
+		if (!configuration) return null
+
+		let relevantConfiguration = configuration
+		for (const part of pathForNode) {
+			if (!(part in relevantConfiguration)) return null
+			relevantConfiguration = relevantConfiguration[part]
+		}
+
+		const relevantNodes = relevantConfiguration?.__nodes as Array<AbstractNode>
+		if (!relevantNodes) return null
+
+		for (const relevantNode of relevantNodes) {
+			const relevantObjectStatement = findParent(relevantNode, ObjectStatement)
+			if (!relevantObjectStatement) continue
+			const documentationDefinition = relevantObjectStatement.documentationDefinition
+			if (!documentationDefinition) continue
+
+			return [
+				documentationDefinition.text,
+				"```fusion",
+				`/// ${documentationDefinition.type}`,
+				"```"
+			].join("\n")
+		}
+
+
+		return null
 	}
 }

@@ -36,6 +36,15 @@ import { ResourceUriNode } from './node/ResourceUriNode'
 import { TranslationShortHandNode } from './node/TranslationShortHandNode'
 import { RoutingControllerNode } from './node/RoutingControllerNode'
 import { RoutingActionNode } from './node/RoutingActionNode'
+import { FlowConfigurationPathNode } from './FlowConfigurationPathNode'
+import { OperationNode } from 'ts-fusion-parser/out/dsl/eel/nodes/OperationNode'
+import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition'
+
+declare module 'ts-fusion-parser/out/fusion/nodes/ObjectStatement' {
+	interface ObjectStatement {
+		documentationDefinition: PropertyDocumentationDefinition | undefined;
+	}
+}
 
 type PostProcess = () => void
 export class FusionFileProcessor extends Logger {
@@ -56,6 +65,7 @@ export class FusionFileProcessor extends Logger {
 				if (node instanceof ObjectStatement) this.processObjectStatement(node, text)
 				if (node instanceof FusionObjectValue) this.processFusionObjectValue(node, text)
 				if (node instanceof LiteralStringNode) this.processLiteralStringNode(node, text)
+				if (node instanceof PropertyDocumentationDefinition) this.processPropertyDocumentationDefinition(node, text)
 				this.parsedFusionFile.addNode(node, text)
 			}
 		}
@@ -129,8 +139,7 @@ export class FusionFileProcessor extends Logger {
 
 				yield {
 					method,
-					eelHelperNode,
-					eelHelperMethodNode,
+					eelHelperNode, eelHelperMethodNode,
 					eelHelperIdentifier
 				}
 			}
@@ -170,10 +179,9 @@ export class FusionFileProcessor extends Logger {
 
 	protected static createEelHelperIdentifierAndPositionFromPath(path: ObjectPathNode[]) {
 		const position = new NodePosition(-1, -1)
-		const nameParts = []
+		const nameParts: string[] = []
 		for (const method of path) {
-			const value = method.value
-			nameParts.push(value)
+			nameParts.push(method.value)
 			if (position.begin === -1) position.begin = method.position.begin
 			position.end = method.position.end
 		}
@@ -181,6 +189,24 @@ export class FusionFileProcessor extends Logger {
 		return {
 			eelHelperIdentifier: nameParts.join("."),
 			position
+		}
+	}
+
+	protected createFlowConfigurationPathNode(functionNode: ObjectFunctionPathNode, text: string) {
+		let configurationPath = functionNode.args[0]
+		if (!(configurationPath instanceof LiteralStringNode)) {
+			if (!(configurationPath instanceof OperationNode)) return
+			const leftHand = configurationPath.leftHand
+			if (!(leftHand instanceof LiteralStringNode)) return
+			configurationPath = leftHand
+		}
+
+		const flowConfigurationPathNode = FlowConfigurationPathNode.FromLiteralStringNode(<LiteralStringNode>configurationPath)
+		if (flowConfigurationPathNode) {
+			this.parsedFusionFile.addNode(flowConfigurationPathNode, text)
+			for (const pathPart of flowConfigurationPathNode["path"]) {
+				this.parsedFusionFile.addNode(pathPart, text)
+			}
 		}
 	}
 
@@ -356,6 +382,35 @@ export class FusionFileProcessor extends Logger {
 					this.parsedFusionFile.addNode(prototypePath, text)
 				}
 			}
+		}
+	}
+
+	protected processPropertyDocumentationDefinition(node: PropertyDocumentationDefinition, text: string) {
+		const FusionObjectNameRegex = /[A-Z][0-9a-zA-Z.]+(?::[0-9a-zA-Z.]+)+/gm
+
+		const nextStatement = node.findNextStatement()
+		if (nextStatement) {
+			nextStatement.documentationDefinition = node
+		}
+
+		const type = node.type;
+		let m = FusionObjectNameRegex.exec(type)
+		let runAwayPrevention = 0;
+		while (m && runAwayPrevention++ < 100) {
+			const prototypeName = m[0]
+
+			const begin = node.position.begin + '/// '.length + m.index
+			const position = {
+				begin,
+				end: begin + prototypeName.length
+			}
+
+			const prototypePath = new PrototypePathSegment(prototypeName, position)
+			if (!prototypePath) continue
+			prototypePath.parent = node
+			this.parsedFusionFile.addNode(prototypePath, text)
+
+			m = FusionObjectNameRegex.exec(type)
 		}
 	}
 

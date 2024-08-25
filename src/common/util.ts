@@ -5,6 +5,7 @@ import { LiteralNumberNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralNum
 import { LiteralStringNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralStringNode'
 import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectFunctionPathNode'
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
+import { IncompletePathSegment } from 'ts-fusion-parser/out/fusion/nodes/IncompletePathSegment';
 import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
 import { OperationNode } from 'ts-fusion-parser/out/dsl/eel/nodes/OperationNode'
 import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue'
@@ -22,8 +23,11 @@ import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
 import { PhpClassNode } from '../fusion/node/PhpClassNode'
 import { ResourceUriNode } from '../fusion/node/ResourceUriNode'
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode'
+import { Position } from 'vscode-languageserver'
+import { FlowConfigurationPathPartNode } from '../fusion/FlowConfigurationPathPartNode'
 import { RoutingActionNode } from '../fusion/node/RoutingActionNode'
 import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
+import { AbstractPathSegment } from 'ts-fusion-parser/out/fusion/nodes/AbstractPathSegment'
 
 export interface LineDataCacheEntry {
     lineLengths: number[]
@@ -81,16 +85,16 @@ export function getLineNumberOfChar(data: string, index: number, textUri: string
         if (totalLength >= index) return { line: i, character: column }
         column -= entry.lineLengths[i] + 1
     }
-    return { line: i, character: column }
+    return { line: i, character: column } as Position
 }
 
-export function* getFiles(dir: string, withExtension = ".fusion"): Generator<string> {
+export function* getFiles(dir: string, withExtension = ".fusion", recursive = true): Generator<string> {
     const directoryEntries = NodeFs.readdirSync(dir, { withFileTypes: true })
     for (const dirent of directoryEntries) {
         if (dirent.isSymbolicLink()) continue
         const res = NodePath.resolve(dir, dirent.name)
         if (dirent.isDirectory()) {
-            yield* getFiles(res, withExtension)
+            if (recursive) yield* getFiles(res, withExtension)
         } else if (NodePath.extname(res) === withExtension) {
             yield res
         }
@@ -156,6 +160,7 @@ export function isPrototypeDeprecated(workspace: FusionWorkspace, prototypeName:
 }
 
 export function mergeObjects(source: { [key: string]: any }, target: { [key: string]: any }) {
+    // PERF: mergeObject is somewhat slow
     for (const key in source) {
         const val = source[key]
         if (val === null) {
@@ -218,20 +223,30 @@ export function abstractNodeToString(node: AbstractEelNode | AbstractNode): stri
     return undefined
 }
 
-export function getObjectIdentifier(objectStatement: ObjectStatement): string {
-    return objectStatement.path.segments.map(segment => `${segment instanceof MetaPathSegment ? '@' : ''}${segment.identifier}`).join(".")
+export function getObjectIdentifier(objectStatement: ObjectStatement, stripIncompletePathSegments = false): string {
+
+    const segmentStrings = []
+
+    for (const segment of objectStatement.path.segments) {
+        if (stripIncompletePathSegments && segment instanceof IncompletePathSegment) continue
+        segmentStrings.push(`${segment instanceof MetaPathSegment ? '@' : ''}${segment.identifier}`)
+    }
+    return segmentStrings.join(".")
 }
 
 export function getNodeWeight(node: any) {
-    if (node instanceof TranslationShortHandNode) return 60
-    if (node instanceof FusionObjectValue) return 50
-    if (node instanceof PhpClassMethodNode) return 40
-    if (node instanceof PhpClassNode) return 30
-    if (node instanceof FqcnNode) return 20
-    if (node instanceof PrototypePathSegment) return 18
-    if (node instanceof ResourceUriNode) return 16
-    if (node instanceof ObjectPathNode) return 15
-    if (node instanceof ObjectStatement) return 10
+    if (node instanceof TranslationShortHandNode) return 600
+    if (node instanceof FusionObjectValue) return 500
+    if (node instanceof PhpClassMethodNode) return 400
+    if (node instanceof PhpClassNode) return 300
+    if (node instanceof FqcnNode) return 200
+    if (node instanceof PrototypePathSegment) return 180
+    if (node instanceof FlowConfigurationPathPartNode) return 170
+    if (node instanceof ResourceUriNode) return 160
+    if (node instanceof ObjectPathNode) return 150
+    if (node instanceof ObjectNode) return 140
+    if (node instanceof AbstractPathSegment) return 110
+    if (node instanceof ObjectStatement) return 100
     if (node instanceof RoutingActionNode) return 9
     if (node instanceof RoutingControllerNode) return 8
     return 0

@@ -5,35 +5,35 @@ import { TagAttributeNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagAttribut
 import { TagNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagNode'
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
 import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
-import { DslExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/DslExpressionValue'
 import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
-import { DefinitionLink, Location, LocationLink, Position, Range } from 'vscode-languageserver/node'
+import { Position, Range } from 'vscode-languageserver'
+import { DefinitionLink, Location, LocationLink } from 'vscode-languageserver/node'
 import { ActionUriPartTypes, ActionUriService } from '../common/ActionUriService'
 import { LinePositionedNode } from '../common/LinePositionedNode'
-import { NodeService } from '../common/NodeService'
 import { XLIFFService } from '../common/XLIFFService'
 import { findParent, getObjectIdentifier, getPrototypeNameFromNode, pathToUri } from '../common/util'
+import { FlowConfigurationPathPartNode } from '../fusion/FlowConfigurationPathPartNode'
+import { FusionWorkspace } from '../fusion/FusionWorkspace'
+import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { ActionUriActionNode } from '../fusion/node/ActionUriActionNode'
 import { ActionUriControllerNode } from '../fusion/node/ActionUriControllerNode'
 import { FqcnNode } from '../fusion/node/FqcnNode'
-import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { NeosFusionFormActionNode } from '../fusion/node/NeosFusionFormActionNode'
 import { NeosFusionFormControllerNode } from '../fusion/node/NeosFusionFormControllerNode'
-import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
 import { PhpClassNode } from '../fusion/node/PhpClassNode'
 import { ResourceUriNode } from '../fusion/node/ResourceUriNode'
+import { RoutingActionNode } from '../fusion/node/RoutingActionNode'
+import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode'
 import { ClassDefinition } from '../neos/NeosPackageNamespace'
 import { AbstractCapability } from './AbstractCapability'
 import { CapabilityContext, ParsedFileCapabilityContext } from './CapabilityContext'
-import { RoutingActionNode } from '../fusion/node/RoutingActionNode'
-import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
-import { toNamespacedPath } from 'path'
+import { NodeService } from '../common/NodeService'
 
 export interface ActionUriDefinition {
 	package: string
@@ -51,14 +51,17 @@ export class DefinitionCapability extends AbstractCapability {
 
 		this.logVerbose(`node type "${foundNodeByLine.getNode().constructor.name}"`)
 		switch (true) {
+			case node instanceof FlowConfigurationPathPartNode:
+				return this.getConfigurationSettingsDefinitions(workspace, <LinePositionedNode<FlowConfigurationPathPartNode>>foundNodeByLine)
 			case node instanceof TranslationShortHandNode:
 				return this.getTranslationShortHandNodeDefinitions(workspace, <LinePositionedNode<TranslationShortHandNode>>foundNodeByLine)
 			case node instanceof FusionObjectValue:
 			case node instanceof PrototypePathSegment:
 				return this.getPrototypeDefinitions(workspace, foundNodeByLine)
 			case node instanceof PathSegment:
+				return this.getPropertyDefinitions(parsedFile, workspace, <LinePositionedNode<PathSegment>>foundNodeByLine)
 			case node instanceof ObjectPathNode:
-				return this.getPropertyDefinitions(parsedFile, workspace, foundNodeByLine)
+				return this.getPropertyDefinitions(parsedFile, workspace, <LinePositionedNode<ObjectPathNode>>foundNodeByLine)
 			case node instanceof PhpClassMethodNode:
 				return this.getEelHelperMethodDefinitions(workspace, <LinePositionedNode<PhpClassMethodNode>>foundNodeByLine)
 			case node instanceof PhpClassNode:
@@ -96,13 +99,7 @@ export class DefinitionCapability extends AbstractCapability {
 				Position.create(position.line, position.character + transUnit.id.length + 5)
 			)
 
-			locations.push({
-				targetUri: translationFile.uri,
-				targetRange: range,
-				targetSelectionRange: range,
-				originSelectionRange: foundNodeByLine.getPositionAsRange()
-			})
-
+			locations.push(LocationLink.create(translationFile.uri, range, range, foundNodeByLine.getPositionAsRange()))
 		}
 		return locations
 
@@ -120,77 +117,34 @@ export class DefinitionCapability extends AbstractCapability {
 		for (const otherParsedFile of workspace.parsedFiles) {
 			for (const otherNode of [...otherParsedFile.prototypeCreations, ...otherParsedFile.prototypeOverwrites]) {
 				if (otherNode.getNode().identifier !== goToPrototypeName) continue
-				locations.push({
-					targetUri: otherParsedFile.uri,
-					targetRange: otherNode.getPositionAsRange(),
-					targetSelectionRange: otherNode.getPositionAsRange(),
-					originSelectionRange: foundNodeByLine.getPositionAsRange()
-				})
+				locations.push(LocationLink.create(
+					otherParsedFile.uri,
+					otherNode.getPositionAsRange(),
+					otherNode.getPositionAsRange(),
+					foundNodeByLine.getPositionAsRange()
+				))
 			}
 		}
 
 		return locations
 	}
 
-	getPropertyDefinitions(parsedFile: ParsedFusionFile, workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<AbstractNode>): null | Location[] {
-		const node = <PathSegment | ObjectPathNode>foundNodeByLine.getNode()
-		const objectNode = node.parent
-		if (!(objectNode instanceof ObjectNode)) return null
+	getPropertyDefinitions(parsedFile: ParsedFusionFile, workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<ObjectPathNode | PathSegment>, debug = false): null | Location[] {
+		const node = foundNodeByLine.getNode()
 
-		const isThisProperty = objectNode.path[0].value === "this"
-		const isPropsProperty = objectNode.path[0].value === "props"
+		const relevantParentType = node instanceof ObjectPathNode ? ObjectNode : ObjectStatement
 
-		if ((!isThisProperty && !isPropsProperty) || objectNode.path.length === 1) {
-			// TODO: handle context properties
-			return null
-		}
-
-		if (isThisProperty) {
-			const isObjectNodeInDsl = findParent(node, DslExpressionValue) !== undefined
-			// TODO: handle `this.foo` in AFX
-			if (isObjectNodeInDsl) return null
-
-			const objectStatement = findParent(objectNode, ObjectStatement)
-			if (!objectStatement) return null
-
-			const prototypeName = NodeService.findPrototypeName(objectStatement)
-			if (!prototypeName) return null
-
-			for (const property of NodeService.getInheritedPropertiesByPrototypeName(prototypeName, workspace)) {
-				if (!property.uri) continue
-
-				const firstPropertyPathSegment = property.statement.path.segments[0]
-				if (firstPropertyPathSegment.identifier === objectNode.path[1].value) {
-					return [{
-						uri: property.uri,
-						range: firstPropertyPathSegment.linePositionedNode.getPositionAsRange()
-					}]
-				}
-			}
-			return null
-		}
-
-		const { foundIgnoreComment, foundIgnoreBlockComment } = NodeService.getSemanticCommentsNodeIsAffectedBy(objectNode, parsedFile)
-		if (foundIgnoreComment) return [{
-			uri: parsedFile.uri,
-			range: foundIgnoreComment.getPositionAsRange()
-		}]
-		if (foundIgnoreBlockComment) return [{
-			uri: parsedFile.uri,
-			range: foundIgnoreBlockComment.getPositionAsRange()
-		}]
-
-		const segment = NodeService.findPropertyDefinitionSegment(objectNode, workspace, true)
+		const objectNodeOrStatement = findParent(node, relevantParentType)
+		if (!objectNodeOrStatement) return null
+		// console.log("found object")
+		const segment = NodeService.findPropertyDefinitionSegment(objectNodeOrStatement, workspace, true, false)
 		if (!segment) return null
+		// console.log("got segment")
 
-		if (segment instanceof PathSegment) return [{
-			uri: parsedFile.uri,
-			range: segment.linePositionedNode.getPositionAsRange()
-		}]
-
+		const firstSegment = segment.statement.path.segments[0]
 		return [{
-			uri: segment.uri!,
-			range: segment.statement.path.segments[0].linePositionedNode.getPositionAsRange()
+			uri: firstSegment.fileUri,
+			range: firstSegment.linePositionedNode.getPositionAsRange()
 		}]
 	}
 
@@ -303,17 +257,32 @@ export class DefinitionCapability extends AbstractCapability {
 			}
 		}
 
-		for (const property of NodeService.getInheritedPropertiesByPrototypeName(tagNode.name, workspace, true)) {
-			if (getObjectIdentifier(property.statement) !== node.name) continue
-			if (!property.uri) continue
+		const prototypeFusionContext = NodeService.getFusionContextOfPrototype(tagNode.name, workspace)
+		if (!prototypeFusionContext) return []
 
-			locationLinks.push({
-				targetUri: property.uri,
-				targetRange: property.statement.linePositionedNode.getPositionAsRange(),
-				targetSelectionRange: property.statement.linePositionedNode.getPositionAsRange(),
-				originSelectionRange
-			})
+		for (const propertyName in prototypeFusionContext) {
+			if (propertyName !== node.name) continue
+
+			const nodes: undefined | Array<AbstractNode> = prototypeFusionContext?.[propertyName].__nodes
+			if (!nodes) continue
+
+			for (const node of nodes) {
+				const statement = findParent(node, ObjectStatement)
+				if (!statement) continue
+
+				locationLinks.unshift({
+					targetUri: statement.fileUri,
+					targetRange: statement.linePositionedNode.getPositionAsRange(),
+					targetSelectionRange: statement.linePositionedNode.getPositionAsRange(),
+					originSelectionRange
+				})
+
+				// TODO: make it configurable if all definitions should be provided
+				break
+			}
 		}
+
+		locationLinks.forEach(l => console.log(l.targetUri));
 
 		const foundNodes = parsedFile.getNodesByPosition(context.params.position)
 		if (!foundNodes) return locationLinks
@@ -328,6 +297,37 @@ export class DefinitionCapability extends AbstractCapability {
 			if (resolvedDefinition) locationLinks.push(...resolvedDefinition)
 		}
 
+		return locationLinks
+	}
+
+	getConfigurationSettingsDefinitions(workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<FlowConfigurationPathPartNode>) {
+		const partNode = foundNodeByLine.getNode()
+		const node = partNode.parent
+
+		const partIndex = node["path"].indexOf(partNode)
+		if (partIndex === -1) return []
+
+		const pathParts = node["path"].slice(0, partIndex + 1)
+		const searchPath = pathParts.map(part => part["value"]).join(".")
+		this.logDebug("searching for ", searchPath)
+
+		const nodeBegin = node.linePositionedNode.getBegin()
+		const originSelectionRange = {
+			start: Position.create(nodeBegin.line, nodeBegin.character + 1),
+			end: foundNodeByLine.getEnd()
+		}
+
+		// console.log("test", workspace.neosWorkspace.configurationManager.getMerged("Neos.Flow.core"))
+
+		const locationLinks: LocationLink[] = []
+		for (const result of workspace.neosWorkspace.configurationManager.search(searchPath)) {
+			locationLinks.push({
+				targetUri: result.file["uri"],
+				targetRange: result.range,
+				targetSelectionRange: result.range,
+				originSelectionRange
+			})
+		}
 		return locationLinks
 	}
 
@@ -363,6 +363,4 @@ export class DefinitionCapability extends AbstractCapability {
 
 		return null
 	}
-
-
 }

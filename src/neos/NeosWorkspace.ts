@@ -1,10 +1,16 @@
+import * as NodeFs from "fs"
 import * as NodePath from "path"
+import { ConfigurationManager } from '../ConfigurationManager'
 import { Logger } from '../common/Logging'
 import { uriToPath } from '../common/util'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
+import { FlowConfiguration } from './FlowConfiguration'
 import { EELHelperToken, NeosPackage } from './NeosPackage'
 
 export class NeosWorkspace extends Logger {
+	protected workspacePath: string
+	public configurationManager: ConfigurationManager
+
 	protected packages: Map<string, NeosPackage> = new Map()
 
 	constructor(
@@ -18,18 +24,22 @@ export class NeosWorkspace extends Logger {
 
 	addPackage(packagePath: string) {
 		try {
-			const neosPackage = new NeosPackage(NodePath.resolve(this.workspacePath, packagePath), this)
+			const neosPackage = new NeosPackage(packagePath, this)
 			this.packages.set(neosPackage.getName(), neosPackage)
+			this.configurationManager.addPackage(neosPackage, packagePath)
+			return neosPackage
 		} catch (error) {
 			if (error instanceof Error) {
 				if ("code" in error && error.code === 'ENOENT') {
 					this.logError('File not found!', packagePath)
 					this.logError("    Error: ", error)
 				} else {
-					throw error
+					this.logError("    Error: ", error)
+					// throw error
 				}
 			}
 		}
+		return undefined
 	}
 
 	getPackages() {
@@ -78,12 +88,6 @@ export class NeosWorkspace extends Logger {
 			if (neosPackage.hasName(packageName)) return neosPackage.getResourceUriPath(relativePath)
 		}
 		return undefined
-	}
-
-	initEelHelpers() {
-		for (const neosPackage of this.packages.values()) {
-			neosPackage.initEelHelper()
-		}
 	}
 
 	getEelHelperTokens() {

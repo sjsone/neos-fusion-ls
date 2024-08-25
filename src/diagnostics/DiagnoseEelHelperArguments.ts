@@ -2,7 +2,7 @@ import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/Objec
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver'
 import { LinePositionedNode } from '../common/LinePositionedNode'
-import { NodeService } from '../common/NodeService'
+import { LegacyNodeService } from '../common/LegacyNodeService'
 import { findParent } from '../common/util'
 import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
@@ -22,7 +22,7 @@ function* getDiagnosticFromEelHelper(positionedNode: LinePositionedNode<PhpClass
 	const isTranslationHelper = node.eelHelper.identifier === "I18n" || node.eelHelper.identifier === "Translate"
 	const isTranslateMethod = node.identifier === "translate"
 
-	if (NodeService.isNodeAffectedByIgnoreComment(findParent(node, ObjectNode)!, parsedFusionFile)) return
+	if (LegacyNodeService.isNodeAffectedByIgnoreComment(findParent(node, ObjectNode)!, parsedFusionFile)) return
 
 	if (!isTranslationHelper || !isTranslateMethod) for (const parameterIndex in method.parameters) {
 		const parameter = method.parameters[parameterIndex]

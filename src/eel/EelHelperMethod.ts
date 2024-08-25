@@ -1,5 +1,5 @@
 import { LinePosition } from '../common/LinePositionedNode'
-import { PhpMethod, PhpMethodParameter } from './PhpMethod'
+import { PhpMethod, PhpMethodParameter, PhpTypeWithDescription } from './PhpMethod'
 
 
 export class EelHelperMethod extends PhpMethod {

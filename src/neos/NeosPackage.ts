@@ -1,4 +1,3 @@
-import * as NodeFs from "fs"
 import * as NodePath from "path"
 import { LinePosition } from '../common/LinePositionedNode'
 import { Logger } from '../common/Logging'
@@ -21,6 +20,19 @@ export interface EELHelperToken {
 		end: LinePosition
 	},
 	methods: EelHelperMethod[]
+}
+
+interface ComposerJson {
+	name: string
+	type: string
+	autoload?: {
+		["psr-4"]?: { [key: string]: string }
+	}
+	extra?: {
+		neos?: {
+			["package-key"]: string
+		}
+	}
 }
 
 export class NeosPackage extends Logger {
@@ -49,7 +61,7 @@ export class NeosPackage extends Logger {
 	}
 
 	public readConfiguration() {
-		this.configuration = FlowConfiguration.FromFolder(this.path)
+		this.configuration = FlowConfiguration.ForPackage(this)
 	}
 
 	protected initNamespaceLoading() {

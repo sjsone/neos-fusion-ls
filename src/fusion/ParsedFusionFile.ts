@@ -6,6 +6,7 @@ import { ParserError } from 'ts-fusion-parser/out/common/ParserError'
 import { AfxParserOptions } from 'ts-fusion-parser/out/dsl/afx/parser'
 import { EelParserOptions } from 'ts-fusion-parser/out/dsl/eel/parser'
 import { AbstractPathSegment } from 'ts-fusion-parser/out/fusion/nodes/AbstractPathSegment'
+import { FusionFile } from 'ts-fusion-parser/out/fusion/nodes/FusionFile'
 import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
@@ -30,7 +31,8 @@ const afxParserOptions: AfxParserOptions = {
 const fusionParserOptions: FusionParserOptions = {
 	afxParserOptions,
 	eelParserOptions,
-	ignoreErrors: true
+	ignoreErrors: true,
+	allowIncompleteObjectStatements: true
 }
 
 export interface RouteDefinition {
@@ -50,6 +52,7 @@ export class ParsedFusionFile extends Logger {
 	public prototypeOverwrites: LinePositionedNode<PrototypePathSegment>[] = []
 	public prototypeExtends: LinePositionedNode<AbstractNode>[] = []
 
+	public fusionFile!: FusionFile
 	public nodesByLine: { [key: string]: LinePositionedNode<AbstractNode>[] } = {}
 	public nodesByType: Map<new (...args: unknown[]) => AbstractNode, LinePositionedNode<AbstractNode>[]> = new Map()
 
@@ -66,7 +69,7 @@ export class ParsedFusionFile extends Logger {
 		this.uri = uri
 		this.workspace = workspace
 		this.neosPackage = neosPackage
-		this.debug = this.uri.endsWith("FusionModule/Routing.fusion")
+		this.debug = this.uri.endsWith("<never>")
 		this.fusionFileProcessor = new FusionFileProcessor(this, loggerPrefix)
 
 		this.logVerbose("Created", uri)
@@ -76,29 +79,31 @@ export class ParsedFusionFile extends Logger {
 		try {
 			this.clearCaches()
 			this.logVerbose("init")
+			const filePath = uriToPath(this.uri)
 			if (text === undefined) {
-				text = NodeFs.readFileSync(uriToPath(this.uri)).toString()
+				text = NodeFs.readFileSync(filePath).toString()
 				this.logVerbose("    read text from file")
 			}
 
-			const fusionFile = ObjectTreeParser.parse(text, undefined, fusionParserOptions)
-			this.ignoredErrorsByParser = fusionFile.errors
+			this.fusionFile = ObjectTreeParser.parse(text, filePath, fusionParserOptions)
+			this.ignoredErrorsByParser = this.fusionFile.errors
 			for (const ignoredError of this.ignoredErrorsByParser) {
 				if (!(ignoredError instanceof ParserError)) continue
 
 				ignoredError.linePosition = getLineNumberOfChar(text, ignoredError.getPosition(), this.uri)
 			}
-			this.fusionFileProcessor.readStatementList(fusionFile.statementList, text)
+			this.fusionFileProcessor.readStatementList(this.fusionFile.statementList, text)
 
-			this.fusionFileProcessor.processNodes(fusionFile, text)
-			const fileName = NodePath.basename(uriToPath(this.uri))
+			this.fusionFileProcessor.processNodes(this.fusionFile, text)
+
+			const fileName = NodePath.basename(filePath)
 			if (fileName.startsWith("Routing") && fileName.endsWith(".fusion")) this.handleFusionRouting(text)
 			this.logVerbose("finished")
 			return true
 		} catch (e) {
 			if (e instanceof Error) {
 				// this.logError("Caught: ", e.message, e.stack)
-				this.logError("    Error: ", e.message)
+				this.logError("    Error: ", e.message, e.stack)
 			}
 
 			return false
@@ -168,7 +173,6 @@ export class ParsedFusionFile extends Logger {
 
 
 		const packageName = segments.slice(0, 2).map(s => s.identifier).join('.')
-
 		const fullControllerName = segments.slice(2).map(s => s.identifier).join('/')
 		const controllerName = fullControllerName.replace(/(Controller)$/, "")
 

@@ -1,25 +1,16 @@
-import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
-import { DslExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/DslExpressionValue'
-import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue'
-import { FusionFile } from 'ts-fusion-parser/out/fusion/nodes/FusionFile'
-import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
-import { MetaPathSegment } from 'ts-fusion-parser/out/fusion/nodes/MetaPathSegment'
+import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
-import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
-import { StatementList } from 'ts-fusion-parser/out/fusion/nodes/StatementList'
-import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
-import { ValueCopy } from 'ts-fusion-parser/out/fusion/nodes/ValueCopy'
+import { RuntimeConfiguration } from 'ts-fusion-runtime'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
-import { abstractNodeToString, checkSemanticCommentIgnoreArguments, findParent, findUntil, getObjectIdentifier } from './util'
-import { AbstractPathValue } from 'ts-fusion-parser/out/fusion/nodes/AbstractPathValue'
-import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
-import { Comment } from 'ts-fusion-parser/out/common/Comment'
-import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
-import { TagAttributeNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagAttributeNode'
-import { TagNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagNode'
-import { LinePositionedNode } from './LinePositionedNode'
-import { SemanticCommentService, SemanticCommentType } from './SemanticCommentService'
+import { MergedArrayTreeService } from './MergedArrayTreeService'
+import { findParent, pathToUri } from './util'
+import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
+import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
+import { AbstractPathSegment } from 'ts-fusion-parser/out/fusion/nodes/AbstractPathSegment'
+import { IncompletePathSegment } from 'ts-fusion-parser/out/fusion/nodes/IncompletePathSegment'
+import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue'
+import { Logger } from './Logging'
 
 export class ExternalObjectStatement {
 	constructor(
@@ -28,385 +19,207 @@ export class ExternalObjectStatement {
 	) { }
 }
 
-export interface FoundApplyPropsResult {
-	appliedProps: boolean
-	appliedStatements?: ObjectStatement[]
-}
-
-class NodeService {
-
-	public doesPrototypeOverrideProps(name: string): boolean {
-		return !["Neos.Fusion:Case", "Neos.Fusion:Loop", "Neos.Neos:ImageUri", "Neos.Neos:NodeUri"].includes(name)
-	}
-
-	public findParentPrototypeName(node: AbstractNode) {
-		const foundParentOperationPrototype = findUntil(node, (possiblePrototype) => {
-			if (!(possiblePrototype instanceof ObjectStatement)) return false
-			if (!(possiblePrototype.operation instanceof ValueAssignment)) return false
-			if (!(possiblePrototype.operation.pathValue instanceof FusionObjectValue)) return false
-			return true
+class NodeService extends Logger {
+	public getFusionConfigurationListUntilNode(node: AbstractNode, workspace: FusionWorkspace, debug = false) {
+		const baseNode = node instanceof PathSegment ? findParent(node, ObjectStatement)!.parent : node
+		const pathForNode = MergedArrayTreeService.buildPathForNode(baseNode!)
+		return pathForNode.map((pathPart, index) => {
+			const path = pathForNode.slice(0, index + 1).join('/');
+			const configuration = workspace.fusionRuntimeConfiguration.forPath(path)
+			return {
+				pathPart,
+				configuration
+			}
 		})
-
-		if (foundParentOperationPrototype instanceof ObjectStatement) {
-			const operation = <ValueAssignment>foundParentOperationPrototype.operation
-			return (<FusionObjectValue>operation.pathValue).value
-		}
-		return ""
 	}
 
-	public findPrototypeName(node: AbstractNode) {
-		const objectStatement = findParent(node, ObjectStatement)
-		if (!objectStatement) return undefined
-		if (!(objectStatement.path.segments[0] instanceof PrototypePathSegment)) return undefined
-		return objectStatement.path.segments[0].identifier
+	public getFusionContextOfPrototype(prototypeName: string, workspace: FusionWorkspace) {
+		return workspace.fusionRuntimeConfiguration.forPath(`/<${prototypeName}>`)
 	}
 
-	public getPrototypeNameFromObjectStatement(objectStatement: ObjectStatement) {
-		const parentOperation = objectStatement.operation
-		if (parentOperation instanceof ValueAssignment) {
-			if (parentOperation.pathValue instanceof FusionObjectValue) {
-				return parentOperation.pathValue.value
+	public getFusionContextUntilNode(node: AbstractNode, workspace: FusionWorkspace, debug = false) {
+		const relevantTree = this.getFusionConfigurationListUntilNode(node, workspace, debug)
+
+		// TODO: prefill fusion context with the correct values (from controller?, EEL-Helper?)
+		const finalFusionContext = {} as { [key: string]: any }
+		for (const relevantTreePart of relevantTree) {
+			const relevantTreePartIndex = relevantTree.indexOf(relevantTreePart)
+			const partConfiguration = relevantTreePart.configuration
+			if ('__eelExpression' in partConfiguration && partConfiguration.__eelExpression !== null) continue
+
+			const hasRenderer = partConfiguration.__objectType === 'Neos.Fusion:Component' || partConfiguration.__prototypeChain?.includes('Neos.Fusion:Component')
+			const rendererNextInPath = relevantTree[relevantTreePartIndex + 1]?.pathPart === "renderer"
+			const atPrivateNextInPath = relevantTree[relevantTreePartIndex + 1]?.pathPart === "__meta" && relevantTree[relevantTreePartIndex + 2]?.pathPart === "private"
+
+			let thisFusionContext: { [key: string]: any } = {}
+			const privateFusionContext: { [key: string]: any } = {}
+
+			if (partConfiguration.__meta) {
+				if (partConfiguration.__meta.context && typeof partConfiguration.__meta.context === "object") {
+					// if (debug) console.log(`partConfiguration due to __meta.context::<${relevantTreePart.pathPart}>`, partConfiguration)
+					for (const contextKey in partConfiguration.__meta.context) {
+						finalFusionContext[contextKey] = partConfiguration.__meta.context[contextKey]
+					}
+				}
+
+				// TODO: sort `__meta` before using it ("@position")
+				if (partConfiguration.__meta.apply && typeof partConfiguration.__meta.apply === "object") {
+					for (const valueToApply of this.getAppliedValues(partConfiguration.__meta.apply, finalFusionContext)) {
+						thisFusionContext = {
+							...thisFusionContext,
+							...valueToApply
+						}
+					}
+				}
+
+				if (partConfiguration.__meta.private && typeof partConfiguration.__meta.private === "object") {
+					for (const privateKey in partConfiguration.__meta.private) {
+						privateFusionContext[privateKey] = partConfiguration.__meta.private[privateKey]
+					}
+				}
+			}
+
+			for (const key in partConfiguration) {
+				if (key.startsWith("__")) continue
+				if (hasRenderer && key === "renderer") continue
+				thisFusionContext[key] = partConfiguration[key]
+			}
+			finalFusionContext.this = thisFusionContext
+			if (hasRenderer && (rendererNextInPath || atPrivateNextInPath)) {
+				finalFusionContext.props = thisFusionContext
+				finalFusionContext.private = privateFusionContext
 			}
 		}
 
-		if (objectStatement.path.segments[0] instanceof PrototypePathSegment) {
-			return objectStatement.path.segments[0].identifier
-		}
+		// console.log("finalFusionContext", finalFusionContext)
+		// console.log("pathForNode", pathForNode)
+		if (debug) console.log("finalFusionContext", finalFusionContext)
 
-		return undefined
+		return finalFusionContext
 	}
 
 	public isPrototypeOneOf(prototypeName: string, oneOf: string, workspace: FusionWorkspace) {
 		if (prototypeName === oneOf) return true
 
-		for (const parsedFile of workspace.parsedFiles) {
-			for (const prototypeCreation of [...parsedFile.prototypeCreations, ...parsedFile.prototypeOverwrites]) {
-				const objectStatement = findParent(prototypeCreation.getNode(), ObjectStatement)
+		const prototypeConfiguration = workspace.mergedArrayTree?.__prototypes?.[prototypeName]
+		if (!prototypeConfiguration) return false
+		if (prototypeConfiguration.__prototypeObjectName === oneOf) return true
+		if (Array.isArray(prototypeConfiguration.__prototypeChain) && prototypeConfiguration.__prototypeChain.includes(oneOf)) return true
+
+		return false
+	}
+
+	protected * getAppliedValues(apply: { [key: string]: any }, finalFusionContext: { [key: string]: any }) {
+		for (const toApply of Object.values(apply)) {
+			// console.log("toApply", toApply)
+
+			const appliedValueFromEelExpression = this.getAppliedValueFromEelExpression(toApply, finalFusionContext)
+			if (appliedValueFromEelExpression) yield appliedValueFromEelExpression
+
+			const valueToApplyIsDataStructure = toApply.__objectType === 'Neos.Fusion:DataStructure' || !!toApply.__prototypeChain?.includes('Neos.Fusion:DataStructure')
+			if (valueToApplyIsDataStructure) for (const key in toApply) {
+				if (key.startsWith('__')) continue
+				yield { [key]: toApply[key] }
+			}
+		}
+	}
+
+	protected getAppliedValueFromEelExpression(toApply: any, finalFusionContext: { [key: string]: any }) {
+		// TODO: run EEL-Expression
+		if (toApply['__eelExpression'] === "props") return finalFusionContext[toApply['__eelExpression']]
+
+		const toApplyEelExpressionValue = toApply.__nodes?.[0]
+		if (!(toApplyEelExpressionValue instanceof EelExpressionValue)) return undefined
+
+		const objectNode = toApplyEelExpressionValue.nodes
+		if (!(objectNode instanceof ObjectNode)) return undefined
+
+		let currentFusionContext = finalFusionContext
+		for (const pathPart of objectNode.path) {
+			if (!(pathPart instanceof ObjectPathNode)) return undefined
+			if (pathPart.incomplete) return undefined
+
+			if (!(pathPart.value in currentFusionContext)) return undefined
+			currentFusionContext = currentFusionContext[pathPart.value]
+		}
+
+		return currentFusionContext
+	}
+
+	public findPropertyDefinitionSegment(objectNode: ObjectNode | ObjectStatement, workspace?: FusionWorkspace, includeOverwrites = false, debug = false): ExternalObjectStatement | undefined {
+		const context = this.getFusionContextUntilNode(objectNode, workspace!, debug)
+
+		if (debug) console.log("context", context)
+		let contextEntry = context
+		let pathEntry: ObjectPathNode | AbstractPathSegment | undefined = undefined
+
+		if (objectNode instanceof ObjectNode) for (const path of objectNode.path) {
+			if (!(path.value in contextEntry)) break
+
+			contextEntry = contextEntry[path.value]
+			pathEntry = path
+		}
+		else for (const path of objectNode.path.segments) {
+			if (!(path.identifier in contextEntry)) break
+
+			contextEntry = contextEntry[path.identifier]
+			pathEntry = path
+		}
+
+		if (!pathEntry) return undefined
+
+		const firstNode = contextEntry.__nodes?.[0]
+		if (!firstNode) return undefined
+
+		const entryObjectStatement = findParent(firstNode, ObjectStatement)
+		if (!entryObjectStatement) return undefined
+
+
+		return new ExternalObjectStatement(entryObjectStatement, entryObjectStatement.fileUri ? pathToUri(entryObjectStatement.fileUri) : undefined)
+	}
+
+	// TODO: rename findPropertyDefinitionSegments and/or refactor into different methods or Service/Capabilities 
+	public * findPropertyDefinitionSegments(objectNode: ObjectStatement, workspace?: FusionWorkspace, includeOverwrites = false): Generator<ExternalObjectStatement | AbstractPathSegment, void, unknown> {
+		// console.log("--> findPropertyDefinitionSegments")
+		const objectNodeParent = objectNode.parent
+		if (!objectNodeParent) return
+
+		const context = this.getFusionContextUntilNode(objectNodeParent, workspace!, false)
+
+		let relevantContext = context.this
+		let ignoreKey = objectNode.path.segments[0].identifier
+
+		let segments: AbstractPathSegment[] = []
+		const isIncompletePath = objectNode.path.segments.find(segment => segment instanceof IncompletePathSegment) !== undefined
+
+		if (isIncompletePath) {
+			segments = objectNode.path.segments.slice(0, -1)
+		}
+
+		for (const segment of segments) {
+			ignoreKey = segment.identifier
+			if (!(segment.identifier in relevantContext)) break
+
+			relevantContext = relevantContext[segment.identifier]
+		}
+
+		for (const key in relevantContext) {
+			if (key === ignoreKey) continue
+
+			const entry = relevantContext[key]
+			if (!entry?.__nodes) continue
+
+			for (const node of entry.__nodes) {
+				const objectStatement = findParent(node, ObjectStatement)
 				if (!objectStatement) continue
 
-				const prototype = objectStatement.path.segments[0]
-				if (!(prototype instanceof PrototypePathSegment)) continue
-				if (prototype.identifier !== prototypeName) continue
-
-				if (!(objectStatement.operation instanceof ValueCopy)) continue
-				const copiedPrototype = objectStatement.operation.assignedObjectPath.objectPath.segments[0]
-				if (!(copiedPrototype instanceof PrototypePathSegment)) continue
-				if (copiedPrototype.identifier === oneOf) return true
-				if (this.isPrototypeOneOf(copiedPrototype.identifier, oneOf, workspace)) return true
+				yield new ExternalObjectStatement(objectStatement, objectStatement.fileUri)
 			}
 		}
 
-		return false
-	}
-
-	public * findPropertyDefinitionSegments(objectNode: ObjectNode | ObjectStatement, workspace?: FusionWorkspace, includeOverwrites = false) {
-		const objectStatement = objectNode instanceof ObjectStatement ? objectNode : findParent(objectNode, ObjectStatement) // [props.foo]
-		if (!objectStatement) return
-
-		let statementList = findParent(objectNode, StatementList)
-		if (!statementList) return
-
-		// TODO: get object identifier and match it runtime-like against the property definition to check if it resolves 
-		const isObjectStatementRenderer = (
-			getObjectIdentifier(objectStatement).startsWith("renderer.")
-			&& !getObjectIdentifier(objectStatement).startsWith("renderer.@process")
-		) || (
-				getObjectIdentifier(objectStatement).startsWith("@private.")
-				&& !getObjectIdentifier(objectStatement).startsWith("@private.@process")
-			)
-
-		if (isObjectStatementRenderer) {
-			const parentObjectStatement = findParent(statementList, ObjectStatement)
-
-			if (parentObjectStatement) {
-				const prototypeName = this.getPrototypeNameFromObjectStatement(objectStatement)
-				if (prototypeName) {
-					yield* this.getInheritedPropertiesByPrototypeName(prototypeName, workspace!, includeOverwrites)
-				}
-			}
-		}
-
-		const parentPrototypeName = this.findPrototypeName(objectStatement)
-		if (parentPrototypeName) {
-			const potentialSurroundingPrototypeName = this.findPrototypeName(findParent(objectStatement, ObjectStatement)!)
-			if (potentialSurroundingPrototypeName) {
-				yield* this.getInheritedPropertiesByPrototypeName(parentPrototypeName, workspace!, includeOverwrites)
-			}
-		}
-
-
-		let wasComingFromRenderer = false
-		const dsl = findParent(objectNode, DslExpressionValue)
-		if (dsl !== undefined) {
-			const parentPrototypeName = this.findParentPrototypeName(statementList)
-			wasComingFromRenderer = getObjectIdentifier(findParent(dsl, ObjectStatement)!) === "renderer" && this.doesPrototypeOverrideProps(parentPrototypeName)
-		}
-
-		let traverseUpwards = true
-		let skipNextStatements = false
-		let onlyWhenFoundApplyProps = false
-
-		do {
-			if (!onlyWhenFoundApplyProps && wasComingFromRenderer) onlyWhenFoundApplyProps = true
-
-			const parentObjectNode = findParent(statementList, ObjectStatement)
-			const parentObjectIdentifier = parentObjectNode ? parentObjectNode.path.segments[0].identifier : ""
-			const isParentObjectMeta = parentObjectNode ? parentObjectNode.path.segments[0] instanceof MetaPathSegment : false
-			let foundApplyProps = false
-
-			const statements: Array<ObjectStatement | ExternalObjectStatement> = [...<ObjectStatement[]>statementList.statements]
-			if (workspace !== undefined) {
-				const parentStatementList = findParent(statementList, StatementList)
-				if (parentStatementList) {
-					const willBeInPrototypeSegmentList = parentStatementList.parent instanceof FusionFile
-					if (willBeInPrototypeSegmentList) {
-						const prototypeObjectStatement = findParent(statementList, ObjectStatement)
-						if (prototypeObjectStatement) {
-							const operation = prototypeObjectStatement.operation
-
-							const prototypeSegment = operation instanceof ValueCopy ? operation.assignedObjectPath.objectPath.segments[0] : prototypeObjectStatement.path.segments[0]
-							if (prototypeSegment instanceof PrototypePathSegment) {
-								statements.push(...this.getInheritedPropertiesByPrototypeName(prototypeSegment.identifier, workspace, includeOverwrites))
-							}
-						}
-					}
-				}
-			}
-
-			let foundPropTypes: ObjectStatement | undefined = undefined
-			for (const statement of statements) {
-				if (statement instanceof ExternalObjectStatement) yield statement
-				if (!(statement instanceof ObjectStatement)) continue
-				if (statement === objectStatement) continue // Let it not find itself
-
-				// TODO: Reduce duplicated code from "findPropertyDefinitionSegments"
-				const firstPathSegment = statement.path.segments[0]
-				if (firstPathSegment instanceof MetaPathSegment && firstPathSegment.identifier.toLowerCase() === "proptypes") {
-					foundPropTypes = statement
-					continue
-				}
-				const applyProps = this.foundApplyProps(statement)
-				if (applyProps !== false) {
-					if (Array.isArray(applyProps.appliedStatements)) {
-						for (const applyProp of applyProps.appliedStatements) yield applyProp.path.segments[0]
-					}
-					if (!foundApplyProps) foundApplyProps = applyProps.appliedProps !== false
-				}
-
-				if (!skipNextStatements) yield firstPathSegment
-			}
-
-			if (foundPropTypes !== undefined) {
-				for (const propType of foundPropTypes.block!.statementList.statements) {
-					if (!(propType instanceof ObjectStatement)) continue
-					yield propType.path.segments[0]
-				}
-			}
-
-			let parentIdentifiersRenderer = false
-			if (parentObjectIdentifier === "renderer" || (parentObjectIdentifier === "private" && isParentObjectMeta)) {
-				const rendererPrototype = findUntil<ObjectStatement>(parentObjectNode, (node) => {
-					if (!(node instanceof ObjectStatement)) return false
-					if (!(node.operation instanceof ValueAssignment)) return false
-					if (!(node.operation.pathValue instanceof FusionObjectValue)) return false
-					return true
-				})
-				parentIdentifiersRenderer = true
-				if (rendererPrototype instanceof ObjectStatement && rendererPrototype.operation instanceof ValueAssignment && "value" in rendererPrototype.operation.pathValue) {
-					parentIdentifiersRenderer = this.doesPrototypeOverrideProps(rendererPrototype.operation.pathValue.value as string)
-				}
-			}
-
-			skipNextStatements = !parentIdentifiersRenderer
-			if (!wasComingFromRenderer) wasComingFromRenderer = parentIdentifiersRenderer
-
-			traverseUpwards = !onlyWhenFoundApplyProps || foundApplyProps
-			statementList = findParent(statementList, StatementList)
-		} while (traverseUpwards && statementList && !(statementList.parent instanceof FusionFile))
-	}
-
-	public findPropertyDefinitionSegment(objectNode: ObjectNode, workspace?: FusionWorkspace, includeOverwrites = false) {
-		for (const segmentOrExternalStatement of this.findPropertyDefinitionSegments(objectNode, workspace, includeOverwrites)) {
-			if (segmentOrExternalStatement instanceof ExternalObjectStatement) {
-				if (segmentOrExternalStatement.statement.path.segments[0].identifier === objectNode.path[1].value) return segmentOrExternalStatement
-			}
-			if (!(segmentOrExternalStatement instanceof PathSegment)) continue
-			if (segmentOrExternalStatement.identifier === "renderer") continue
-
-			if (objectNode.path.length > 1 && segmentOrExternalStatement.identifier === objectNode.path[1].value) {
-				return segmentOrExternalStatement
-			}
-		}
-
-		return undefined
-	}
-
-	protected getAppliedPropsFromPathValue(pathValue: AbstractPathValue): boolean | ObjectStatement[] {
-		if (pathValue instanceof EelExpressionValue) {
-			const appliedObjectNode = Array.isArray(pathValue.nodes) ? pathValue.nodes[0] : pathValue.nodes
-			if (!(appliedObjectNode instanceof ObjectNode)) return false
-			if (appliedObjectNode.path[0].value === "props") return true
-
-			return false
-		}
-		if (pathValue instanceof FusionObjectValue) {
-			// TODO: Allow more than just `Neos.Fusion:DataStructure` as @apply value
-			if (pathValue.value !== "Neos.Fusion:DataStructure") return false
-			const objectStatement = findParent(pathValue, ObjectStatement)
-			if (!objectStatement?.block) return false
-			const applyStatements: ObjectStatement[] = []
-			applyStatements.push(...objectStatement.block.statementList.statements as ObjectStatement[])
-			return applyStatements.length === 0 ? false : applyStatements
-		}
-
-		return false
-	}
-
-	public foundApplyProps(statement: ObjectStatement): FoundApplyPropsResult | false {
-		const segment = statement.path.segments[0]
-		if (!(segment instanceof MetaPathSegment && segment.identifier === "apply")) return false
-
-
-		const result: FoundApplyPropsResult = {
-			appliedProps: false
-		}
-
-		const applyStatements = statement.operation instanceof ValueAssignment ? [statement] : statement.block?.statementList.statements
-		if (!applyStatements) return false
-		const foundStatements: any[] = []
-		for (const applyStatement of applyStatements) {
-			if (!(applyStatement instanceof ObjectStatement)) continue
-			if (!(applyStatement.operation instanceof ValueAssignment)) continue
-
-			const res = this.getAppliedPropsFromPathValue(applyStatement.operation.pathValue)
-			if (res === true) result.appliedProps = true
-			if (res !== false && Array.isArray(res)) {
-				foundStatements.push(...res)
-			}
-		}
-		if (foundStatements.length > 0) {
-			result.appliedStatements = foundStatements
-		}
-
-		return result
-	}
-
-	public * getInheritedPropertiesByPrototypeName(name: string, workspace: FusionWorkspace, includeOverwrites = false, debug = false): Generator<ExternalObjectStatement, void, unknown> {
-		for (const otherParsedFile of workspace.parsedFiles) {
-			yield* this.getInheritedPropertiesByPrototypeNameFromParsedFile(name, otherParsedFile, workspace, includeOverwrites, debug)
-		}
-	}
-
-	public * getInheritedPropertiesByPrototypeNameFromParsedFile(name: string, parsedFile: ParsedFusionFile, workspace: FusionWorkspace, includeOverwrites = false, debug = false) {
-		const prototypeNodes = [...parsedFile.prototypeCreations]
-		if (includeOverwrites) prototypeNodes.push(...parsedFile.prototypeOverwrites)
-		for (const positionedNode of prototypeNodes) {
-			yield* this.getInheritedPropertiesByPrototypeNameFromPrototypePathSegments(name, workspace, parsedFile, positionedNode, includeOverwrites, debug)
-		}
-	}
-
-	public * getInheritedPropertiesByPrototypeNameFromPrototypePathSegments(name: string, workspace: FusionWorkspace, parsedFile: ParsedFusionFile, positionedNode: LinePositionedNode<PrototypePathSegment>, includeOverwrites = false, debug = false) {
-		if (positionedNode.getNode().identifier !== name) return
-		const objectStatement = findParent(positionedNode.getNode(), ObjectStatement)
-		if (!objectStatement) return
-
-		const operation = objectStatement.operation
-		if (operation instanceof ValueCopy) {
-			const prototypeSegment = operation.assignedObjectPath.objectPath.segments[0]
-			if (!(prototypeSegment instanceof PrototypePathSegment)) return
-			yield* this.getInheritedPropertiesByPrototypeName(prototypeSegment.identifier, workspace, includeOverwrites)
-		}
-
-		if (!objectStatement.block) return
-
-		yield* this.getMetaPropTypesAsExternalObjectStatements(objectStatement, parsedFile)
-	}
-
-	public * getMetaPropTypesAsExternalObjectStatements(objectStatement: ObjectStatement, parsedFile: ParsedFusionFile) {
-		let foundPropTypes: ObjectStatement | undefined = undefined
-		for (const statement of objectStatement.block!.statementList.statements) {
-			if (!(statement instanceof ObjectStatement)) continue
-
-			const firstPathSegment = statement.path.segments[0]
-			if (firstPathSegment instanceof MetaPathSegment && firstPathSegment.identifier.toLowerCase() === "proptypes") {
-				foundPropTypes = statement
-				continue
-			}
-
-			yield new ExternalObjectStatement(statement, parsedFile.uri)
-		}
-
-		if (!foundPropTypes?.block) return
-		for (const propType of foundPropTypes.block.statementList.statements) {
-			if (!(propType instanceof ObjectStatement)) continue
-			yield new ExternalObjectStatement(propType, parsedFile.uri)
-		}
-	}
-
-	public affectsCommentTheProperty(propertyName: string, commentNode: Comment, type: SemanticCommentType) {
-		const parsedSemanticComment = SemanticCommentService.parseSemanticComment(commentNode.value.trim())
-		if (!parsedSemanticComment) return false
-		if (parsedSemanticComment.type !== type) return false
-
-		return checkSemanticCommentIgnoreArguments(propertyName, parsedSemanticComment.arguments)
-	}
-
-	public isNodeAffectedByIgnoreComment(node: AbstractNode, parsedFusionFile: ParsedFusionFile) {
-		const { foundIgnoreComment, foundIgnoreBlockComment } = this.getSemanticCommentsNodeIsAffectedBy(node, parsedFusionFile)
-		return foundIgnoreComment || foundIgnoreBlockComment
-	}
-
-	public getSemanticCommentsNodeIsAffectedBy(node: AbstractNode, parsedFusionFile: ParsedFusionFile) {
-		const objectStatementText = abstractNodeToString(node)
-		if (!objectStatementText) {
-			return {
-				foundIgnoreComment: undefined,
-				foundIgnoreBlockComment: undefined
-			}
-		}
-		const affectedNodeBySemanticComment = this.getAffectedNodeBySemanticComment(node)
-		if (!affectedNodeBySemanticComment) {
-			return {
-				foundIgnoreComment: undefined,
-				foundIgnoreBlockComment: undefined
-			}
-		}
-		const affectedLine = affectedNodeBySemanticComment.linePositionedNode.getBegin().line - 1
-
-		if (!parsedFusionFile.nodesByLine) {
-			return {
-				foundIgnoreComment: undefined,
-				foundIgnoreBlockComment: undefined
-			}
-		}
-
-		const nodesByLine = parsedFusionFile.nodesByLine[affectedLine] ?? []
-		const foundIgnoreComment = nodesByLine.find(nodeByLine => {
-			const commentNode = nodeByLine.getNode()
-			if (!(commentNode instanceof Comment)) return false
-
-			return this.affectsCommentTheProperty(objectStatementText, commentNode, SemanticCommentType.Ignore)
-		})
-
-		const fileComments = parsedFusionFile.getNodesByType(Comment) ?? []
-		const foundIgnoreBlockComment = (fileComments ?? []).find(positionedComment => {
-			const commentNode = positionedComment.getNode()
-			if (!this.affectsCommentTheProperty(objectStatementText, commentNode, SemanticCommentType.IgnoreBlock)) return false
-
-			const commentParent = commentNode.parent
-			return !!findUntil(node, parentNode => parentNode === commentParent)
-		})
-
-		return {
-			foundIgnoreComment,
-			foundIgnoreBlockComment
-		}
-	}
-
-	public getAffectedNodeBySemanticComment(node: AbstractNode) {
-		return node.parent instanceof TagAttributeNode ? findParent(node, TagNode) : node
+		// console.log("<-- findPropertyDefinitionSegments")
 	}
 }
 
 const nodeService = new NodeService
-export { NodeService as NodeServiceClass, nodeService as NodeService }
+export { nodeService as NodeService, NodeService as NodeServiceClass }
