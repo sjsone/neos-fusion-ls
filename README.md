@@ -1,5 +1,13 @@
 # NEOS Fusion Language Server
 
-This is currently just a stub. Once the server is stable enough it gets published here.
+## Quick Start
 
-Until then it is developed in the [`vscode-neos-fusion-lsp`](https://github.com/sjsone/vscode-neos-fusion-lsp)
+1. Install NPM Package `neos-fusion-ls`
+
+## Usage
+
+### Bundled
+
+If you want to bundle the `server/out/main.js` directly with your LSP-Client you can clone this repository directly into your project. (See [VSCode Extension](https://github.com/sjsone/vscode-neos-fusion-lsp))
+
+### External
