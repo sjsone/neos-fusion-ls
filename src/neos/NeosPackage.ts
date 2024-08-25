@@ -5,7 +5,7 @@ import { EelHelperMethod } from '../eel/EelHelperMethod'
 import { FlowConfiguration } from './FlowConfiguration'
 import { NeosPackageNamespace } from './NeosPackageNamespace'
 import { NeosWorkspace } from './NeosWorkspace'
-import { ComposerJsonNotFoundError } from '../error/ComposerJsonNotFoundError'
+import { ComposerService } from '../common/ComposerService'
 
 export interface EELHelperToken {
 	name: string,
@@ -36,7 +36,10 @@ interface ComposerJson {
 }
 
 export class NeosPackage extends Logger {
-	public composerJson: any
+	public path: string
+	public neosWorkspace: NeosWorkspace
+
+	public composerJson: ComposerJson
 
 	public namespaces: Map<string, NeosPackageNamespace> = new Map()
 	public configuration!: FlowConfiguration
@@ -44,13 +47,12 @@ export class NeosPackage extends Logger {
 
 	protected debug: boolean
 
-	constructor(public path: string, public neosWorkspace: NeosWorkspace) {
-		const composerJsonFilePath = NodePath.join(path, "composer.json")
-		if (!NodeFs.existsSync(composerJsonFilePath)) throw new ComposerJsonNotFoundError(neosWorkspace, path)
-
-		const composerJson = JSON.parse(NodeFs.readFileSync(composerJsonFilePath).toString())
-
+	constructor(path: string, neosWorkspace: NeosWorkspace) {
+		const composerJson = ComposerService.getComposerJsonByPath(path)
 		super(composerJson.name)
+
+		this.path = NodePath.resolve(neosWorkspace["workspacePath"], path)
+		this.neosWorkspace = neosWorkspace
 
 		this.composerJson = composerJson
 

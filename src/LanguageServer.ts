@@ -10,8 +10,7 @@ import {
 	TextDocumentChangeEvent,
 	TextDocumentSyncKind,
 	TextDocuments,
-	_Connection,
-	MessageActionItem
+	_Connection
 } from "vscode-languageserver/node"
 import { type ExtensionConfiguration } from './ExtensionConfiguration'
 import { addFusionIgnoreSemanticCommentAction } from './actions/AddFusionIgnoreSemanticCommentAction'

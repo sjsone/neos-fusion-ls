@@ -16,8 +16,10 @@ export class PhpMethod {
 		public name: string,
 		public description: string | undefined,
 		public parameters: PhpMethodParameter[],
-		public returnType: string | undefined,
-		public position: { start: LinePosition, end: LinePosition }
-	) {
-	}
+		public position: {
+			start: LinePosition,
+			end: LinePosition
+		},
+		public returns: PhpTypeWithDescription | undefined
+	) { }
 }
