@@ -1,10 +1,26 @@
 {
-  "name": "neos-fusion-ls",
-  "version": "0.0.1",
-  "description": "NEOS Fusion Language Server",
-  "main": "out/server.js",
-  "repository": "git@github.com:sjsone/neos-fusion-ls.git",
-  "author": "Simon Schmidt <simon@sjs.one>",
-  "license": "AGPL-3.0-or-later",
-  "private": false
+    "name": "neos-fusion-ls",
+    "description": "Neos Fusion Language Server",
+    "version": "0.3.16",
+    "author": "Simon J. Schmidt",
+    "license": "AGPL-3.0-or-later",
+    "publisher": "SimonSchmidt",
+    "repository": "git@github.com:sjsone/neos-fusion-ls.git",
+    "engines": {
+        "node": "*"
+    },
+    "dependencies": {
+        "fast-xml-parser": "^4.2.4",
+        "ts-fusion-parser": "^0.1.44",
+        "vscode-languageserver": "^8.0.0",
+        "vscode-languageserver-textdocument": "^1.0.7",
+        "vscode-uri": "^3.0.8",
+        "yaml": "^2.2.1"
+    },
+    "scripts": {
+        "esbuild-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
+        "esbuild": "yarn run esbuild-base --minify",
+        "esbuild-without-minify": "yarn run esbuild-base --sourcemap",
+        "esbuild-watch": "yarn run esbuild-base --sourcemap --watch"
+    }
 }
