@@ -33,7 +33,7 @@ export class InlayHintLanguageFeature extends AbstractLanguageFeature<InlayHintP
 		const inlayHints: InlayHint[] = []
 		for (const phpMethodNode of phpMethodNodes) {
 			const node = phpMethodNode.getNode()
-			const eelHelper = workspace.neosWorkspace.getEelHelperTokensByName(node.eelHelper.identifier)
+			const eelHelper = workspace.neosWorkspace.getEelHelperTokenByName(node.eelHelper.identifier)
 			if (!eelHelper) continue
 
 			const method = eelHelper.methods.find(method => method.valid(node.identifier))

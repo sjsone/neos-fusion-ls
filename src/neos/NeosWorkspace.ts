@@ -119,7 +119,7 @@ export class NeosWorkspace extends Logger {
 		return eelHelperTokens
 	}
 
-	getEelHelperTokensByName(name: string) {
+	getEelHelperTokenByName(name: string) {
 		return this.getEelHelperTokens().find(eelHelper => eelHelper.name === name)
 	}
 }
