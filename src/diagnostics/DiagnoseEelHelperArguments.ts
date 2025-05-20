@@ -19,12 +19,12 @@ function* getDiagnosticFromEelHelper(positionedNode: LinePositionedNode<PhpClass
 	const method = eelHelper.methods.find(method => method.valid(node.identifier))
 	if (!method) return
 
+	if (LegacyNodeService.isNodeAffectedByIgnoreComment(findParent(node, ObjectNode)!, parsedFusionFile)) return
+
 	const isTranslationHelper = node.eelHelper.identifier === "I18n" || node.eelHelper.identifier === "Translate"
 	const isTranslateMethod = node.identifier === "translate"
 
-	if (LegacyNodeService.isNodeAffectedByIgnoreComment(findParent(node, ObjectNode)!, parsedFusionFile)) return
-
-	if (!isTranslationHelper || !isTranslateMethod) for (const parameterIndex in method.parameters) {
+	if (!isTranslationHelper && !isTranslateMethod) for (const parameterIndex in method.parameters) {
 		const parameter = method.parameters[parameterIndex]
 		if (parameter.defaultValue !== undefined) break
 		if (pathNode.args[parameterIndex] === undefined) {
