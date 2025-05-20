@@ -1,7 +1,7 @@
 {
     "name": "neos-fusion-ls",
     "description": "Neos Fusion Language Server",
-    "version": "0.6.5",
+    "version": "0.6.7",
     "author": "Simon J. Schmidt",
     "license": "AGPL-3.0-or-later",
     "publisher": "SimonSchmidt",
