@@ -46,7 +46,7 @@ export class HoverCapability extends AbstractCapability {
 
 	protected getMarkdownByNode(foundNodeByLine: LinePositionedNode<AbstractNode>, parsedFile: ParsedFusionFile, workspace: FusionWorkspace) {
 		const node = foundNodeByLine.getNode()
-		return `Type: ${node.constructor.name}`
+		// return `Type: ${node.constructor.name}`
 		this.logVerbose(`FoundNode: ` + node.constructor.name)
 
 		if (node instanceof FlowConfigurationPathPartNode)
@@ -211,10 +211,7 @@ export class HoverCapability extends AbstractCapability {
 	getMarkdownForEelHelperMethod(node: PhpClassMethodNode, workspace: FusionWorkspace) {
 		const header = `EEL-Helper *${node.eelHelper.identifier}*.**${node.identifier}** \n`
 
-		const eelHelper = workspace.neosWorkspace.getEelHelperTokenByName(node.eelHelper.identifier)
-		if (!eelHelper) return header
-
-		const method = eelHelper.methods.find(method => method.valid(node.identifier))
+		const method = node.method
 		if (!method) return header
 
 		const phpParameters = method.parameters.map(p => `${p.type ?? ''}${p.name}${p.defaultValue ?? ''}`).join(", ")
@@ -226,14 +223,13 @@ export class HoverCapability extends AbstractCapability {
 		}
 
 		return [
-			`#### \`${node.eelHelper.identifier}.${node.identifier} \``,
-			...descriptionParts,
-			'##### Signature:',
+			// `#### \`${method.classDefinition.className} ${node.identifier}() \``,
+			// '##### Signature:',
 			'```php',
 			`<?php`,
 			`${method.name}(${phpParameters})${method.returns?.type ? ': ' + method.returns.type : ''}`,
-			`?>`,
-			'```'
+			'```',
+			...descriptionParts,
 		].join('\n')
 	}
 

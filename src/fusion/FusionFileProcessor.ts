@@ -39,6 +39,8 @@ import { RoutingActionNode } from './node/RoutingActionNode'
 import { FlowConfigurationPathNode } from './FlowConfigurationPathNode'
 import { OperationNode } from 'ts-fusion-parser/out/dsl/eel/nodes/OperationNode'
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition'
+import { type ParsedYaml } from '../neos/FlowConfigurationFile'
+import { EelHelperMethod } from '../eel/EelHelperMethod'
 
 declare module 'ts-fusion-parser/out/fusion/nodes/ObjectStatement' {
 	interface ObjectStatement {
@@ -97,52 +99,158 @@ export class FusionFileProcessor extends Logger {
 		for (const {
 			eelHelperNode,
 			eelHelperMethodNode,
-			eelHelperIdentifier
-		} of FusionFileProcessor.ResolveEelHelpersForObjectNode(node, this.parsedFusionFile.workspace.neosWorkspace)) {
-			this.parsedFusionFile.addNode(eelHelperMethodNode, text)
-			this.parsedFusionFile.addNode(eelHelperNode, text)
+			eelHelperIdentifier,
+			debug
 
-			this.processTranslations(eelHelperIdentifier, eelHelperMethodNode, text)
-			this.processPropTypesFqcn(eelHelperIdentifier, eelHelperMethodNode, text)
+		} of FusionFileProcessor.ResolveEelHelpersForObjectNode(node, this.parsedFusionFile.workspace.neosWorkspace)) {
+			if (eelHelperMethodNode) {
+				this.parsedFusionFile.addNode(eelHelperMethodNode, text)
+			}
+
+			if (eelHelperNode) {
+				this.parsedFusionFile.addNode(eelHelperNode, text)
+			}
+
+			if (eelHelperMethodNode && eelHelperIdentifier) {
+				this.processTranslations(eelHelperIdentifier, eelHelperMethodNode, text)
+				this.processPropTypesFqcn(eelHelperIdentifier, eelHelperMethodNode, text)
+			}
 		}
 	}
 
-	static * ResolveEelHelpersForObjectNode(node: ObjectNode, neosWorkspace: NeosWorkspace) {
-		const eelHelperTokens = neosWorkspace.getEelHelperTokens()
+	static TBD_test_inner(identifier: string, pathParts: Array<ObjectPathNode>) {
+		const identifierParts = identifier.split('.')
+		const newPathParts = [...pathParts]
+		const classPathNodes: Array<ObjectPathNode> = []
 
-		const currentPath: ObjectPathNode[] = []
-		for (const part of node.path) {
-			currentPath.push(part)
-			const isLastPathPart = currentPath.length === node.path.length
+		for (const identifierPart of identifierParts) {
+			const pathPart = newPathParts.shift()
+			if (pathPart === undefined) {
+				return undefined
+			}
 
-			if (!(part instanceof ObjectFunctionPathNode) && !(isLastPathPart && (part instanceof ObjectPathNode))) continue
+			if (pathPart.value === identifierPart) {
+				classPathNodes.push(pathPart)
+			} else {
+				return undefined
+			}
+		}
 
-			if (currentPath.length === 1) {
-				// TODO: Allow immediate EEL-Helper (like "q(...)")
+		return {
+			pathParts: newPathParts,
+			classPathNodes
+		}
+	}
+
+	static TBD_test(defaultContext: { [key: string]: ParsedYaml; }, pathParts: Array<ObjectPathNode>) {
+		for (const identifier in defaultContext) {
+			const ret = this.TBD_test_inner(identifier, pathParts)
+			if (ret === undefined) {
 				continue
 			}
 
-			const methodNode = currentPath.pop()
-			if (!methodNode) continue
+			return ret
+		}
+		return undefined
+	}
 
-			const eelHelperMethodNodePosition = new NodePosition(methodNode.position.begin, methodNode.position.begin + methodNode.value.length)
-			const eelHelperMethodNode = new PhpClassMethodNode(methodNode.value, part, eelHelperMethodNodePosition)
+	static * ResolveEelHelpersForObjectNode(node: ObjectNode, neosWorkspace: NeosWorkspace): Generator<{
+		method: EelHelperMethod | undefined
+		eelHelperNode: PhpClassNode | undefined
+		eelHelperMethodNode: PhpClassMethodNode | undefined
+		eelHelperIdentifier: string | undefined
+		debug: boolean | undefined
+	}, void, unknown> {
 
-			const { position, eelHelperIdentifier } = FusionFileProcessor.createEelHelperIdentifierAndPositionFromPath(currentPath)
-			for (const eelHelper of eelHelperTokens) {
-				if (eelHelper.name !== eelHelperIdentifier) continue
+		const defaultContext = neosWorkspace.configurationManager.getMerged("Neos.Fusion.defaultContext") ?? {}
+		if (typeof defaultContext !== "object") {
+			console.error("default context has to be an object")
+			return
+		}
 
-				const method = eelHelper.methods.find(method => method.valid(methodNode.value))
-				if (!method) continue
+		const ret = this.TBD_test(defaultContext, node.path)
+		if (ret === undefined) {
+			return
+		}
 
-				const eelHelperNode = new PhpClassNode(eelHelperIdentifier, eelHelperMethodNode, node, position)
+		const eelHelperIdentifier = ret.classPathNodes.map(n => n.value).join(".")
+		if (!(eelHelperIdentifier in defaultContext)) {
+			return
+		}
 
-				yield {
-					method,
-					eelHelperNode, eelHelperMethodNode,
-					eelHelperIdentifier
-				}
+		const eelHelper = neosWorkspace.getEelHelperTokenByName(eelHelperIdentifier)
+		if (eelHelper === undefined) {
+			return
+		}
+
+		const debug = eelHelperIdentifier === "SJS.Site.Test"
+
+		const defaultContextValue = defaultContext[eelHelperIdentifier]
+		if (typeof defaultContextValue !== "string") {
+			return
+		}
+
+		if (defaultContextValue.includes("::")) {
+			// TODO: handle static methods like `q(node)`
+			return
+		}
+
+		const phpClassNodePosition = new NodePosition(
+			ret.classPathNodes[0].position.begin,
+			ret.classPathNodes[ret.classPathNodes.length - 1].position.end
+		)
+
+		let currentClassDefinition = neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(defaultContextValue)
+		if (currentClassDefinition === undefined) return
+
+		const phpClassNode = new PhpClassNode(currentClassDefinition, eelHelperIdentifier, node, phpClassNodePosition)
+
+		if (debug) console.log("ret.pathParts", ret.pathParts)
+		for (const part of ret.pathParts) {
+			if (debug) console.log("part value:: ", part.value)
+			if (!(part instanceof ObjectFunctionPathNode)) break
+			if (currentClassDefinition === undefined) break
+
+			if (debug) console.log("eelHelper.name / eelHelperIdentifier", eelHelper.name, eelHelperIdentifier)
+			if (eelHelper.name !== eelHelperIdentifier) continue
+
+
+			const method = currentClassDefinition.methods.find(method => method.valid(part.value))
+			if (debug) console.log("method", method)
+			if (!method) continue
+
+			const eelHelperMethodNodePosition = new NodePosition(part.position.begin, part.position.begin + part.value.length)
+			const eelHelperMethodNode = new PhpClassMethodNode(part.value, part, eelHelperMethodNodePosition, method)
+
+			phpClassNode.setMethod(eelHelperMethodNode)
+
+			yield {
+				method,
+				eelHelperNode: phpClassNode,
+				eelHelperMethodNode,
+				eelHelperIdentifier,
+				debug
 			}
+
+			currentClassDefinition = undefined
+
+			const methodReturnType = method.returns
+			if (debug) console.log("methodReturnType", methodReturnType)
+
+			if (methodReturnType === undefined) {
+				return
+			}
+
+			if (methodReturnType.type === undefined) {
+				return
+			}
+
+			if (!methodReturnType.type.includes("\\")) {
+				return
+			}
+
+			currentClassDefinition = neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(methodReturnType.type)
+			if (debug) console.log("FOUND: currentClassDefinition", currentClassDefinition?.className)
 		}
 	}
 
@@ -393,7 +501,7 @@ export class FusionFileProcessor extends Logger {
 			nextStatement.documentationDefinition = node
 		}
 
-		const type = node.type;
+		const type = node.type
 		let m = FusionObjectNameRegex.exec(type)
 		let runAwayPrevention = 0;
 		while (m && runAwayPrevention++ < 100) {

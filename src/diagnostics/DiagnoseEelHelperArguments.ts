@@ -9,22 +9,23 @@ import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
 import { EELHelperToken } from '../neos/NeosPackage'
 import { CommonDiagnosticHelper } from './CommonDiagnosticHelper'
 import { IgnorableDiagnostic } from './IgnorableDiagnostic'
+import { PhpClassNode } from '../fusion/node/PhpClassNode'
 
 // TODO: Watch for php changes and re-diagnose all relevant FusionFiles
 
 function* getDiagnosticFromEelHelper(positionedNode: LinePositionedNode<PhpClassMethodNode>, pathNode: ObjectFunctionPathNode, eelHelper: EELHelperToken, parsedFusionFile: ParsedFusionFile) {
 	const node = positionedNode.getNode()
-	if (eelHelper.name !== node.eelHelper.identifier) return
+	// if (eelHelper.name !== node.eelHelper.identifier) return
 
-	const method = eelHelper.methods.find(method => method.valid(node.identifier))
+	const method = node.method
 	if (!method) return
 
 	if (LegacyNodeService.isNodeAffectedByIgnoreComment(findParent(node, ObjectNode)!, parsedFusionFile)) return
 
-	const isTranslationHelper = node.eelHelper.identifier === "I18n" || node.eelHelper.identifier === "Translate"
-	const isTranslateMethod = node.identifier === "translate"
+	// const isTranslationHelper = node.eelHelper.identifier === "I18n" || node.eelHelper.identifier === "Translate"
+	// const isTranslateMethod = node.identifier === "translate"
 
-	if (!isTranslationHelper && !isTranslateMethod) for (const parameterIndex in method.parameters) {
+	for (const parameterIndex in method.parameters) {
 		const parameter = method.parameters[parameterIndex]
 		if (parameter.defaultValue !== undefined) break
 		if (pathNode.args[parameterIndex] === undefined) {

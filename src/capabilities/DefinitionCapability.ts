@@ -164,19 +164,12 @@ export class DefinitionCapability extends AbstractCapability {
 
 	getEelHelperMethodDefinitions(workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<PhpClassMethodNode>) {
 		const node = foundNodeByLine.getNode()
-		this.logVerbose(`Trying to find ${node.eelHelper.identifier}${node.identifier}`)
-		for (const eelHelper of workspace.neosWorkspace.getEelHelperTokens()) {
-			if (eelHelper.name === node.eelHelper.identifier) {
-				const method = eelHelper.methods.find(method => method.valid(node.identifier))
-				if (!method) continue
-				return [{
-					uri: eelHelper.uri,
-					range: method.position
-				}]
-			}
-		}
+		// this.logInfo(`Trying to find ${node.eelHelper.identifier} .${node.identifier}`)
 
-		return null
+		return [{
+			uri: node.method.uri,
+			range: node.method.position
+		}]
 	}
 
 	getFqcnDefinitions(workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<FqcnNode>) {

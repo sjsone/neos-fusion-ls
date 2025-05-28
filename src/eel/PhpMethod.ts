@@ -13,6 +13,7 @@ export interface PhpMethodParameter extends PhpTypeWithDescription {
 
 export class PhpMethod {
 	constructor(
+		public uri: string,
 		public name: string,
 		public description: string | undefined,
 		public parameters: PhpMethodParameter[],

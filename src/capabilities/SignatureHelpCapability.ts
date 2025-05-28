@@ -27,21 +27,25 @@ export class SignatureHelpCapability extends AbstractCapability {
 			eelHelperMethodNode,
 		} of FusionFileProcessor.ResolveEelHelpersForObjectNode(node.parent, workspace.neosWorkspace)) {
 			const parameters: ParameterInformation[] = []
-			for (const parameter of method.parameters) {
-				const name = parameter.name.replace("$", "")
-				parameters.push({
-					label: name,
-					documentation: `${parameter.type ?? ''}${name}`
-				})
+			if (method !== undefined) {
+				for (const parameter of method.parameters) {
+					const name = parameter.name.replace("$", "")
+					parameters.push({
+						label: name,
+						documentation: `${parameter.type ?? ''}${name}`
+					})
+				}
 			}
 
-			const signatureLabelIdentifier = `${eelHelperNode.identifier}.${eelHelperMethodNode.identifier}`
-			const signatureLabelParameters = parameters.map(p => p.documentation).join(', ')
-			signatureHelp.signatures.push({
-				label: `${signatureLabelIdentifier}(${signatureLabelParameters})`,
-				documentation: method.description,
-				parameters
-			})
+			if (method !== undefined && eelHelperNode !== undefined && eelHelperMethodNode !== undefined) {
+				const signatureLabelIdentifier = `${eelHelperNode.identifier}.${eelHelperMethodNode.identifier}`
+				const signatureLabelParameters = parameters.map(p => p.documentation).join(', ')
+				signatureHelp.signatures.push({
+					label: `${signatureLabelIdentifier}(${signatureLabelParameters})`,
+					documentation: method.description,
+					parameters
+				})
+			}
 		}
 
 		return signatureHelp

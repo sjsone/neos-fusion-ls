@@ -127,6 +127,10 @@ export class NeosPackage extends Logger {
 	}
 
 	getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
+		if (fullyQualifiedClassName.startsWith("\\")) {
+			fullyQualifiedClassName = fullyQualifiedClassName.substring(1)
+		}
+
 		for (const namespaceEntry of this.namespaces.entries()) {
 			if (fullyQualifiedClassName.startsWith(namespaceEntry[0])) {
 				return namespaceEntry[1].getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName)
