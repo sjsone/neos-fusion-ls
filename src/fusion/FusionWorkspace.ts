@@ -352,6 +352,7 @@ export class FusionWorkspace extends Logger {
     }
 
     public async diagnoseAllFusionFiles() {
+        this.logInfo("Diagnosing all fusion files ")
         this.filesToDiagnose = this.parsedFiles.filter(parsedFile => {
             return !this.isFileInIgnoredDiagnosticsFolder(parsedFile)
         })

@@ -11,10 +11,21 @@ export class PhpFileChangeHandler extends AbstractFileChangeHandler {
 	public async handleChanged(fileEvent: FileEvent) {
 		clearLineDataCacheForFile(fileEvent.uri)
 		this.logVerbose(`handle change of file: ${fileEvent.uri}`)
+
+		let wasAffected: boolean = false
 		for (const workspace of this.languageServer.fusionWorkspaces) {
 			for (const neosPackage of workspace.neosWorkspace.getPackages().values()) {
-				// TODO: handle PHP file change
+				for (const namespace of neosPackage.namespaces.values()) {
+					if (namespace.clearKnownForFileUri(fileEvent.uri)) {
+						wasAffected = true
+					}
+				}
 			}
+		}
+
+		// FIXME: diagnosing fusion files has no effect because each PhpClassMethodNode holds its own reference to the PhpClassMethod. The files should be re-processed instead but for that we need the list of potentially affected nodes instead of all
+		if (wasAffected) {
+			Promise.all(this.languageServer.fusionWorkspaces.map(workspace => workspace.diagnoseAllFusionFiles()))
 		}
 	}
 

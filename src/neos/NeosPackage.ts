@@ -47,7 +47,7 @@ export class NeosPackage extends Logger {
 
 		this.composerJson = composerJson
 
-		this.debug = this.getName() === "neos/fusion"
+		this.debug = false
 
 		this.initNamespaceLoading()
 		this.readConfiguration()

@@ -1,22 +1,28 @@
 import * as NodeFs from "fs"
 import * as NodePath from "path"
 import { PhpClass } from '../common/php/PhpClass'
-import { PhpFile } from '../common/php/PhpFile'
-import { pathToUri } from '../common/util'
+import { Logger } from '../common/Logging'
 
 
-export class NeosPackageNamespace {
-	public name: string
-	protected path: string
-
-	protected fileUriCache: Map<string, string> = new Map()
-	protected fqcnCache: Map<string, { possibleFilePath: string, className: string, pathParts: string[] }> = new Map()
-
+export class NeosPackageNamespace extends Logger {
 	protected phpClassByFQCN: Map<string, PhpClass> = new Map()
 
-	constructor(name: string, path: string) {
+	constructor(public readonly name: string, public readonly path: string) {
+		super(name)
 		this.name = name
 		this.path = path
+	}
+
+	clearKnownForFileUri(fileUri: string) {
+		let wasAffected: boolean = false
+		for (const phpClass of this.phpClassByFQCN.values()) {
+			if (phpClass.fileUri === fileUri) {
+				this.phpClassByFQCN.delete(phpClass.fullyQualifiedClassName)
+				this.logVerbose("Removed PHP Class entry for ", fileUri)
+				wasAffected = true
+			}
+		}
+		return wasAffected
 	}
 
 	getFileUriFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
