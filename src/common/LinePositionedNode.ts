@@ -1,6 +1,7 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
 import { Range } from 'vscode-languageserver'
 import { getLineNumberOfChar } from './util'
+import { randomUUID } from 'crypto'
 
 export interface LinePosition {
 	line: number
@@ -26,6 +27,8 @@ export class LinePositionedNode<T extends AbstractNode> {
 	protected start!: LinePosition
 	protected end!: LinePosition
 
+	public readonly UUID: string
+
 	constructor(node: T, text?: string, textUri?: string) {
 		this.node = node
 		this.node.linePositionedNode = this
@@ -36,6 +39,8 @@ export class LinePositionedNode<T extends AbstractNode> {
 			this.end = getLineNumberOfChar(text, node.position.end, textUri)
 			this.node.fileUri = textUri
 		}
+
+		this.UUID = randomUUID()
 	}
 
 	getNode() {

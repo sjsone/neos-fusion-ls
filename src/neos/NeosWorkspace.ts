@@ -84,13 +84,13 @@ export class NeosWorkspace extends Logger {
 	}
 
 	getEelHelperFromFullyQualifiedClassNameWithStaticMethod(fullyQualifiedClassName: string, staticMethod?: string) {
-		if (!staticMethod) return this.getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName)
+		if (!staticMethod) return this.getPhpClassFromFullyQualifiedClassName(fullyQualifiedClassName)
 		return undefined
 	}
 
-	getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
+	getPhpClassFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
 		for (const neosPackage of this.packages.values()) {
-			const classDefinition = neosPackage.getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName)
+			const classDefinition = neosPackage.getPhpClassFromFullyQualifiedClassName(fullyQualifiedClassName)
 			if (classDefinition) return classDefinition
 		}
 		return undefined

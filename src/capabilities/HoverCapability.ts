@@ -13,6 +13,7 @@ import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/Prototyp
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
 import * as YAML from 'yaml'
 import { LinePositionedNode } from '../common/LinePositionedNode'
+import { MergedArrayTreeService } from '../common/MergedArrayTreeService'
 import { NodeService } from '../common/NodeService'
 import { XLIFFService } from '../common/XLIFFService'
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util'
@@ -25,8 +26,6 @@ import { ResourceUriNode } from '../fusion/node/ResourceUriNode'
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode'
 import { AbstractCapability } from './AbstractCapability'
 import { CapabilityContext, ParsedFileCapabilityContext } from './CapabilityContext'
-import { Nodes } from 'ts-fusion-parser'
-import { MergedArrayTreeService } from '../common/MergedArrayTreeService'
 
 
 export class HoverCapability extends AbstractCapability {

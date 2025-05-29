@@ -1,26 +1,16 @@
 import * as NodePath from "path"
-import * as NodeFs from "fs"
-import { LinePosition } from '../common/LinePositionedNode'
+import { ComposerService } from '../common/ComposerService'
 import { Logger } from '../common/Logging'
-import { EelHelperMethod } from '../eel/EelHelperMethod'
+import { PhpClass } from '../common/php/PhpClass'
 import { FlowConfiguration } from './FlowConfiguration'
 import { NeosPackageNamespace } from './NeosPackageNamespace'
 import { NeosWorkspace } from './NeosWorkspace'
-import { ComposerService } from '../common/ComposerService'
 
 export interface EELHelperToken {
 	name: string,
-	uri: string,
-	namespace: NeosPackageNamespace
-	pathParts: string[]
-	className: string
-	package: NeosPackage
-	regex: RegExp,
-	position: {
-		start: LinePosition,
-		end: LinePosition
-	},
-	methods: EelHelperMethod[]
+	phpClass: PhpClass,
+	package: NeosPackage,
+	regex: RegExp
 }
 
 interface ComposerJson {
@@ -90,14 +80,9 @@ export class NeosPackage extends Logger {
 			if (eelHelper !== undefined) {
 				const location = {
 					name: eelHelperPrefix,
-					namespace: eelHelper.namespace,
-					pathParts: eelHelper.pathParts,
-					className: eelHelper.className,
+					phpClass: eelHelper,
 					package: this,
-					uri: eelHelper.uri,
 					regex: RegExp(`(${eelHelperPrefix.split('.').join('\\.')})(\\.\\w+)?`),
-					position: eelHelper.position,
-					methods: eelHelper.methods
 				}
 				this.eelHelpers.push(location)
 				this.logVerbose(`|-"${eelHelperPrefix}" with ${eelHelper.methods.length} methods`)
@@ -126,14 +111,14 @@ export class NeosPackage extends Logger {
 		return undefined
 	}
 
-	getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
+	getPhpClassFromFullyQualifiedClassName(fullyQualifiedClassName: string) {
 		if (fullyQualifiedClassName.startsWith("\\")) {
 			fullyQualifiedClassName = fullyQualifiedClassName.substring(1)
 		}
 
 		for (const namespaceEntry of this.namespaces.entries()) {
 			if (fullyQualifiedClassName.startsWith(namespaceEntry[0])) {
-				return namespaceEntry[1].getClassDefinitionFromFullyQualifiedClassName(fullyQualifiedClassName)
+				return namespaceEntry[1].getPhpClassFromFullyQualifiedClassName(fullyQualifiedClassName)
 			}
 		}
 		return undefined

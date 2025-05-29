@@ -90,25 +90,25 @@ class ActionUriService extends Logger {
 		fqcnParts.push(className)
 		const fqcn = fqcnParts.join('\\')
 
-		const classDefinition = namespace.getClassDefinitionFromFullyQualifiedClassName(fqcn)
-		if (classDefinition === undefined) {
+		const phpClass = namespace.getPhpClassFromFullyQualifiedClassName(fqcn)
+		if (phpClass === undefined) {
 			this.logDebug(`Could not get class for built FQCN: "${fqcn}"`)
 			return undefined
 		}
 
 		if (definitionTargetName === "controller") return [{
-			targetUri: classDefinition.uri,
-			targetRange: classDefinition.position,
-			targetSelectionRange: classDefinition.position,
+			targetUri: phpClass.fileUri,
+			targetRange: phpClass.position,
+			targetSelectionRange: phpClass.position,
 			originSelectionRange
 		}]
 
 		if (definitionTargetName === "action") {
 			const fullActionName = actionName + "Action"
-			for (const method of classDefinition.methods) {
+			for (const method of phpClass.methods) {
 				if (method.name !== fullActionName) continue
 				return [{
-					targetUri: classDefinition.uri,
+					targetUri: phpClass.fileUri,
 					targetRange: method.position,
 					targetSelectionRange: method.position,
 					originSelectionRange

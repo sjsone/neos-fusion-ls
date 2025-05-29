@@ -298,8 +298,9 @@ export class CompletionCapability extends AbstractCapability {
 
 		const eelHelpers = fusionWorkspace.neosWorkspace.getEelHelperTokens()
 		for (const eelHelper of eelHelpers) {
-			for (const method of eelHelper.methods) {
+			for (const method of eelHelper.phpClass.methods) {
 				if (method.getNormalizedName() === "allowsCallOfMethod") continue
+
 				const fullName = eelHelper.name + "." + method.getNormalizedName()
 				if (!fullName.startsWith(fullPath)) continue
 				const newText = `${fullName}($1)`

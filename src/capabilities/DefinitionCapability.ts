@@ -30,7 +30,6 @@ import { ResourceUriNode } from '../fusion/node/ResourceUriNode'
 import { RoutingActionNode } from '../fusion/node/RoutingActionNode'
 import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode'
-import { ClassDefinition } from '../neos/NeosPackageNamespace'
 import { AbstractCapability } from './AbstractCapability'
 import { CapabilityContext, ParsedFileCapabilityContext } from './CapabilityContext'
 import { NodeService } from '../common/NodeService'
@@ -153,8 +152,8 @@ export class DefinitionCapability extends AbstractCapability {
 		for (const eelHelper of workspace.neosWorkspace.getEelHelperTokens()) {
 			if (eelHelper.name === node.identifier) {
 				return [{
-					uri: eelHelper.uri,
-					range: eelHelper.position
+					uri: eelHelper.phpClass.fileUri,
+					range: eelHelper.phpClass.position
 				}]
 			}
 		}
@@ -167,19 +166,19 @@ export class DefinitionCapability extends AbstractCapability {
 		// this.logInfo(`Trying to find ${node.eelHelper.identifier} .${node.identifier}`)
 
 		return [{
-			uri: node.method.uri,
+			uri: node.method.phpClass.fileUri,
 			range: node.method.position
 		}]
 	}
 
 	getFqcnDefinitions(workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<FqcnNode>) {
-		const classDefinition: ClassDefinition = foundNodeByLine.getNode().classDefinition
-		if (classDefinition === undefined) return null
+		const phpClass = foundNodeByLine.getNode().phpClass
+		if (phpClass === undefined) return null
 
 		return [{
-			targetUri: classDefinition.uri,
-			targetRange: classDefinition.position,
-			targetSelectionRange: classDefinition.position,
+			targetUri: phpClass.fileUri,
+			targetRange: phpClass.position,
+			targetSelectionRange: phpClass.position,
 			originSelectionRange: {
 				start: foundNodeByLine.getBegin(),
 				end: {
@@ -327,29 +326,29 @@ export class DefinitionCapability extends AbstractCapability {
 	getRoutingControllerNode(parsedFile: ParsedFusionFile, workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<RoutingControllerNode>, context: ParsedFileCapabilityContext<RoutingControllerNode>): null | LocationLink {
 		const node = foundNodeByLine.getNode()
 
-		const classDefinition = RoutingControllerNode.getClassDefinitionFromRoutingControllerNode(parsedFile, workspace, node)
-		if (!classDefinition) return null
+		const phpClass = RoutingControllerNode.getClassDefinitionFromRoutingControllerNode(parsedFile, workspace, node)
+		if (!phpClass) return null
 
 		return {
-			targetUri: classDefinition.uri,
+			targetUri: phpClass.fileUri,
 			originSelectionRange: node.linePositionedNode.getPositionAsRange(),
-			targetRange: classDefinition.position,
-			targetSelectionRange: classDefinition.position
+			targetRange: phpClass.position,
+			targetSelectionRange: phpClass.position
 		}
 	}
 
 	getRoutingActionNode(parsedFile: ParsedFusionFile, workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<RoutingActionNode>, context: ParsedFileCapabilityContext<RoutingActionNode>): null | Location {
 		const node = foundNodeByLine.getNode()
 
-		const classDefinition = RoutingControllerNode.getClassDefinitionFromRoutingControllerNode(parsedFile, workspace, node.parent)
-		if (!classDefinition) return null
+		const phpClass = RoutingControllerNode.getClassDefinitionFromRoutingControllerNode(parsedFile, workspace, node.parent)
+		if (!phpClass) return null
 
 		const actionName = node.name + "Action"
-		for (const method of classDefinition.methods) {
+		for (const method of phpClass.methods) {
 			if (method.name !== actionName) continue
 
 			return {
-				uri: classDefinition.uri,
+				uri: phpClass.fileUri,
 				range: method.position
 			}
 		}

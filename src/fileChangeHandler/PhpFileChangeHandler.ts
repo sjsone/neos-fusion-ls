@@ -13,19 +13,7 @@ export class PhpFileChangeHandler extends AbstractFileChangeHandler {
 		this.logVerbose(`handle change of file: ${fileEvent.uri}`)
 		for (const workspace of this.languageServer.fusionWorkspaces) {
 			for (const neosPackage of workspace.neosWorkspace.getPackages().values()) {
-				const helper = neosPackage.getEelHelpers().find(helper => helper.uri === fileEvent.uri)
-				if (!helper) continue
-
-				this.logVerbose(`  File was EEL-Helper ${helper.name}`)
-
-				const namespace = helper.namespace
-				const classDefinition = namespace.getClassDefinitionFromFilePathAndClassName(uriToPath(helper.uri), helper.className, helper.pathParts)
-				if (!classDefinition) continue
-
-				this.logVerbose(`  Methods: then ${helper.methods.length} now ${classDefinition.methods.length}`)
-
-				helper.methods = classDefinition.methods
-				helper.position = classDefinition.position
+				// TODO: handle PHP file change
 			}
 		}
 	}

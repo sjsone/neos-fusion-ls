@@ -6,11 +6,13 @@ import { LiteralStringNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralStr
 import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectFunctionPathNode'
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
 import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
+import { OperationNode } from 'ts-fusion-parser/out/dsl/eel/nodes/OperationNode'
 import { FusionFile } from 'ts-fusion-parser/out/fusion/nodes/FusionFile'
 import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
 import { MetaPathSegment } from 'ts-fusion-parser/out/fusion/nodes/MetaPathSegment'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
+import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition'
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
 import { StatementList } from 'ts-fusion-parser/out/fusion/nodes/StatementList'
 import { StringValue } from 'ts-fusion-parser/out/fusion/nodes/StringValue'
@@ -20,8 +22,11 @@ import { ActionUriPartTypes, ActionUriService } from '../common/ActionUriService
 import { LinePositionedNode } from '../common/LinePositionedNode'
 import { Logger } from '../common/Logging'
 import { NodeService } from '../common/NodeService'
+import { PhpClassMethod } from '../common/php/PhpClassMethod'
 import { findParent, getObjectIdentifier } from '../common/util'
+import { type ParsedYaml } from '../neos/FlowConfigurationFile'
 import { NeosWorkspace } from '../neos/NeosWorkspace'
+import { FlowConfigurationPathNode } from './FlowConfigurationPathNode'
 import { ParsedFusionFile } from './ParsedFusionFile'
 import { ActionUriActionNode } from './node/ActionUriActionNode'
 import { ActionUriControllerNode } from './node/ActionUriControllerNode'
@@ -33,14 +38,9 @@ import { NeosFusionFormDefinitionNode } from './node/NeosFusionFormDefinitionNod
 import { PhpClassMethodNode } from './node/PhpClassMethodNode'
 import { PhpClassNode } from './node/PhpClassNode'
 import { ResourceUriNode } from './node/ResourceUriNode'
-import { TranslationShortHandNode } from './node/TranslationShortHandNode'
-import { RoutingControllerNode } from './node/RoutingControllerNode'
 import { RoutingActionNode } from './node/RoutingActionNode'
-import { FlowConfigurationPathNode } from './FlowConfigurationPathNode'
-import { OperationNode } from 'ts-fusion-parser/out/dsl/eel/nodes/OperationNode'
-import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition'
-import { type ParsedYaml } from '../neos/FlowConfigurationFile'
-import { EelHelperMethod } from '../eel/EelHelperMethod'
+import { RoutingControllerNode } from './node/RoutingControllerNode'
+import { TranslationShortHandNode } from './node/TranslationShortHandNode'
 
 declare module 'ts-fusion-parser/out/fusion/nodes/ObjectStatement' {
 	interface ObjectStatement {
@@ -100,8 +100,6 @@ export class FusionFileProcessor extends Logger {
 			eelHelperNode,
 			eelHelperMethodNode,
 			eelHelperIdentifier,
-			debug
-
 		} of FusionFileProcessor.ResolveEelHelpersForObjectNode(node, this.parsedFusionFile.workspace.neosWorkspace)) {
 			if (eelHelperMethodNode) {
 				this.parsedFusionFile.addNode(eelHelperMethodNode, text)
@@ -118,7 +116,7 @@ export class FusionFileProcessor extends Logger {
 		}
 	}
 
-	static TBD_test_inner(identifier: string, pathParts: Array<ObjectPathNode>) {
+	static matchIdentifierAgainstPathParts(identifier: string, pathParts: Array<ObjectPathNode>) {
 		const identifierParts = identifier.split('.')
 		const newPathParts = [...pathParts]
 		const classPathNodes: Array<ObjectPathNode> = []
@@ -142,9 +140,9 @@ export class FusionFileProcessor extends Logger {
 		}
 	}
 
-	static TBD_test(defaultContext: { [key: string]: ParsedYaml; }, pathParts: Array<ObjectPathNode>) {
+	static getEelHelperFromDefaultContext(defaultContext: { [key: string]: ParsedYaml; }, pathParts: Array<ObjectPathNode>) {
 		for (const identifier in defaultContext) {
-			const ret = this.TBD_test_inner(identifier, pathParts)
+			const ret = this.matchIdentifierAgainstPathParts(identifier, pathParts)
 			if (ret === undefined) {
 				continue
 			}
@@ -155,11 +153,10 @@ export class FusionFileProcessor extends Logger {
 	}
 
 	static * ResolveEelHelpersForObjectNode(node: ObjectNode, neosWorkspace: NeosWorkspace): Generator<{
-		method: EelHelperMethod | undefined
+		method: PhpClassMethod | undefined
 		eelHelperNode: PhpClassNode | undefined
 		eelHelperMethodNode: PhpClassMethodNode | undefined
 		eelHelperIdentifier: string | undefined
-		debug: boolean | undefined
 	}, void, unknown> {
 
 		const defaultContext = neosWorkspace.configurationManager.getMerged("Neos.Fusion.defaultContext") ?? {}
@@ -168,7 +165,7 @@ export class FusionFileProcessor extends Logger {
 			return
 		}
 
-		const ret = this.TBD_test(defaultContext, node.path)
+		const ret = this.getEelHelperFromDefaultContext(defaultContext, node.path)
 		if (ret === undefined) {
 			return
 		}
@@ -182,8 +179,6 @@ export class FusionFileProcessor extends Logger {
 		if (eelHelper === undefined) {
 			return
 		}
-
-		const debug = eelHelperIdentifier === "SJS.Site.Test"
 
 		const defaultContextValue = defaultContext[eelHelperIdentifier]
 		if (typeof defaultContextValue !== "string") {
@@ -200,23 +195,18 @@ export class FusionFileProcessor extends Logger {
 			ret.classPathNodes[ret.classPathNodes.length - 1].position.end
 		)
 
-		let currentClassDefinition = neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(defaultContextValue)
-		if (currentClassDefinition === undefined) return
+		let currentPhpClass = neosWorkspace.getPhpClassFromFullyQualifiedClassName(defaultContextValue)
+		if (currentPhpClass === undefined) return
 
-		const phpClassNode = new PhpClassNode(currentClassDefinition, eelHelperIdentifier, node, phpClassNodePosition)
+		const phpClassNode = new PhpClassNode(currentPhpClass, eelHelperIdentifier, node, phpClassNodePosition)
 
-		if (debug) console.log("ret.pathParts", ret.pathParts)
 		for (const part of ret.pathParts) {
-			if (debug) console.log("part value:: ", part.value)
 			if (!(part instanceof ObjectFunctionPathNode)) break
-			if (currentClassDefinition === undefined) break
+			if (currentPhpClass === undefined) break
 
-			if (debug) console.log("eelHelper.name / eelHelperIdentifier", eelHelper.name, eelHelperIdentifier)
 			if (eelHelper.name !== eelHelperIdentifier) continue
 
-
-			const method = currentClassDefinition.methods.find(method => method.valid(part.value))
-			if (debug) console.log("method", method)
+			const method = currentPhpClass.methods.find(method => method.valid(part.value))
 			if (!method) continue
 
 			const eelHelperMethodNodePosition = new NodePosition(part.position.begin, part.position.begin + part.value.length)
@@ -228,14 +218,12 @@ export class FusionFileProcessor extends Logger {
 				method,
 				eelHelperNode: phpClassNode,
 				eelHelperMethodNode,
-				eelHelperIdentifier,
-				debug
+				eelHelperIdentifier
 			}
 
-			currentClassDefinition = undefined
+			currentPhpClass = undefined
 
 			const methodReturnType = method.returns
-			if (debug) console.log("methodReturnType", methodReturnType)
 
 			if (methodReturnType === undefined) {
 				return
@@ -249,15 +237,17 @@ export class FusionFileProcessor extends Logger {
 				return
 			}
 
-			currentClassDefinition = neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(methodReturnType.type)
-			if (debug) console.log("FOUND: currentClassDefinition", currentClassDefinition?.className)
+			currentPhpClass = neosWorkspace.getPhpClassFromFullyQualifiedClassName(methodReturnType.type)
 		}
 	}
 
 	protected processTranslations(identifier: string, methodNode: PhpClassMethodNode, text: string) {
-		if (!(identifier === "I18n" || identifier === "Translation") || methodNode.identifier !== "translate") return
 		if (!(methodNode.pathNode instanceof ObjectFunctionPathNode)) return
 		if (methodNode.pathNode.args.length !== 1) return
+
+		const method = methodNode.method
+		if (method.phpClass.fullyQualifiedClassName !== "Neos\\Flow\\I18n\\EelHelper\\TranslationHelper") return
+		if (method.name !== "translate") return
 
 		const firstArgument = methodNode.pathNode.args[0]
 		if (!(firstArgument instanceof LiteralStringNode)) return
@@ -278,7 +268,7 @@ export class FusionFileProcessor extends Logger {
 		let fqcn = firstArgument.value.split("\\\\").join("\\")
 		if (fqcn.startsWith("\\")) fqcn = fqcn.replace("\\", "")
 
-		const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(fqcn)
+		const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getPhpClassFromFullyQualifiedClassName(fqcn)
 		if (classDefinition === undefined) return
 
 		const fqcnNode = new FqcnNode(firstArgument.value, classDefinition, firstArgument.position)
@@ -404,7 +394,7 @@ export class FusionFileProcessor extends Logger {
 		if (!(operation.pathValue instanceof StringValue)) return
 		const fqcn = operation.pathValue.value.split("\\\\").join("\\")
 
-		const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(fqcn)
+		const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getPhpClassFromFullyQualifiedClassName(fqcn)
 		if (classDefinition === undefined) return
 
 		const begin = operation.pathValue.position.begin + operation.pathValue.value.indexOf(fqcn) + 1
@@ -479,7 +469,7 @@ export class FusionFileProcessor extends Logger {
 
 				if (prototypeName.startsWith('\\')) {
 					const fqcn = prototypeName.slice(1).split("\\\\").join("\\")
-					const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getClassDefinitionFromFullyQualifiedClassName(fqcn)
+					const classDefinition = this.parsedFusionFile.workspace.neosWorkspace.getPhpClassFromFullyQualifiedClassName(fqcn)
 					if (classDefinition === undefined) continue
 					const fqcnNode = new FqcnNode(prototypeName, classDefinition, position)
 					this.parsedFusionFile.addNode(fqcnNode, text)

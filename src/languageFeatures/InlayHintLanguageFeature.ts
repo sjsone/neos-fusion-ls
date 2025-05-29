@@ -9,7 +9,7 @@ import { LiteralStringNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralStr
 import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectFunctionPathNode'
 import { InlayHint, InlayHintKind, InlayHintParams, MarkupKind } from 'vscode-languageserver/node'
 import { InlayHintDepth } from '../ExtensionConfiguration'
-import { EelHelperMethod } from '../eel/EelHelperMethod'
+import { PhpClassMethod } from '../common/php/PhpClassMethod'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
@@ -33,12 +33,10 @@ export class InlayHintLanguageFeature extends AbstractLanguageFeature<InlayHintP
 		const inlayHints: InlayHint[] = []
 		for (const phpMethodNode of phpMethodNodes) {
 			const node = phpMethodNode.getNode()
-			const eelHelper = workspace.neosWorkspace.getEelHelperTokenByName(node.eelHelper.identifier)
-			if (!eelHelper) continue
-
-			const method = eelHelper.methods.find(method => method.valid(node.identifier))
-			if (!method) continue
 			if (!(node.pathNode instanceof ObjectFunctionPathNode)) continue
+
+
+			const method = node.method
 
 			for (const hint of this.getInlayHintsFromPhpClassMethodNode(node, method, workspace)) {
 				inlayHints.push(hint)
@@ -48,7 +46,7 @@ export class InlayHintLanguageFeature extends AbstractLanguageFeature<InlayHintP
 		return inlayHints
 	}
 
-	protected * getInlayHintsFromPhpClassMethodNode(node: PhpClassMethodNode, method: EelHelperMethod, workspace: FusionWorkspace) {
+	protected * getInlayHintsFromPhpClassMethodNode(node: PhpClassMethodNode, method: PhpClassMethod, workspace: FusionWorkspace) {
 		if (!(node.pathNode instanceof ObjectFunctionPathNode)) return
 
 		// TODO: improve spread parameter label 
@@ -70,6 +68,7 @@ export class InlayHintLanguageFeature extends AbstractLanguageFeature<InlayHintP
 			const spreadOffset = isSpread ? parseInt(index) - spreadParameterIndex! : 0
 			const showParameterName = !isSpread || spreadOffset < 1
 			const parameterName = parameter.name.replace("$", "")
+			if (method.parameters.length === 1 && parameterName === method.name) continue
 
 			const labelPrefix = isSpread ? '...' : ''
 			const label = showParameterName ? parameterName : ''

@@ -35,7 +35,7 @@ export class RoutingControllerNode extends AbstractNode {
 				if (!incorrectFqcn.startsWith(namespaceName)) continue
 
 				const fqcn = incorrectFqcn.replace(namespaceName, namespaceName + "Controller\\")
-				const classDefinition = neosPackage.getClassDefinitionFromFullyQualifiedClassName(fqcn)
+				const classDefinition = neosPackage.getPhpClassFromFullyQualifiedClassName(fqcn)
 				if (classDefinition) return classDefinition
 			}
 		}
