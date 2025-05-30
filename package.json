@@ -20,7 +20,7 @@
     },
     "scripts": {
         "prepublishOnly": "rm -rf out/main.js && yarn run build:release",
-        "build:base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
+        "build:base": "../node_modules/.bin/esbuild ./src/main.ts --bundle --outfile=out/main.js --format=cjs --platform=node --keep-names",
         "build:release": "yarn run build:minify",
         "build:minify": "yarn run build:base --minify",
         "build:no-minify": "yarn run build:base --sourcemap",
