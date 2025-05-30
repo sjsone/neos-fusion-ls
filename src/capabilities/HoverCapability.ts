@@ -59,7 +59,7 @@ export class HoverCapability extends AbstractCapability {
 		if (node instanceof PathSegment)
 			return this.getMarkdownForPathSegment(node, workspace)
 		if (node instanceof PhpClassNode)
-			return `EEL-Helper **${node.identifier}**`
+			return this.getMarkdownForPhpClassNode(node)
 		if (node instanceof ObjectFunctionPathNode)
 			return `EEL-Function **${node.value}**`
 		if (node instanceof ObjectPathNode)
@@ -179,6 +179,20 @@ export class HoverCapability extends AbstractCapability {
 		].join("\n")
 	}
 
+	getMarkdownForPhpClassNode(node: PhpClassNode) {
+		const className = node.phpClass.getClassName()
+		const namespace = node.phpClass.fullyQualifiedClassName.replace('\\' + className, "")
+
+		return [
+			'```php',
+			`<?php`,
+			`namespace ${namespace};`,
+			'',
+			`class ${className} { }`,
+			'```'
+		].join('\n')
+	}
+
 	getMarkdownForObjectPath(workspace: FusionWorkspace, foundNodeByLine: LinePositionedNode<ObjectPathNode>) {
 		const node = foundNodeByLine.getNode()
 		const objectNode = node.parent
@@ -213,7 +227,8 @@ export class HoverCapability extends AbstractCapability {
 		const method = node.method
 		if (!method) return header
 
-		const phpParameters = method.parameters.map(p => `${p.type ?? ''}${p.name}${p.defaultValue ?? ''}`).join(", ")
+		const phpParametersList = method.parameters.map(p => `    ${p.type ?? ''}${p.name}${p.defaultValue ?? ''}`)
+		const phpParameters = "\n" + phpParametersList.join(", \n") + "\n"
 
 		const descriptionParts: string[] = []
 		if (method.description) {
@@ -226,7 +241,7 @@ export class HoverCapability extends AbstractCapability {
 			// '##### Signature:',
 			'```php',
 			`<?php`,
-			`${method.name}(${phpParameters})${method.returns?.type ? ': ' + method.returns.type : ''}`,
+			`function ${method.name}(${phpParameters})${method.returns?.type ? ': ' + method.returns.type : ''}`,
 			'```',
 			...descriptionParts,
 		].join('\n')

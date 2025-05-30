@@ -1,4 +1,3 @@
-import { NeosPackageNamespace } from '../../neos/NeosPackageNamespace'
 import { getLineNumberOfChar } from '../util'
 import { type PhpClass } from './PhpClass'
 
@@ -170,13 +169,21 @@ export class PhpClassMethod {
 						description: res[2] ?? undefined
 					}
 				} else {
-					const line = docLineMatch[2] ?? "\n";
+					let line = "\n"
+					if (docLineMatch[2]) {
+						if (docLineMatch[1]) {
+							line = `_${docLineMatch[1]}_${docLineMatch[2]}\n`
+						} else {
+							line = docLineMatch[2]
+						}
+					}
 					if (debug) console.log(`Line: <${line}>`)
 					descriptionParts.push(line.trim() === "Examples::" ? "Examples:" : line)
 				}
 
 				docLineMatch = docLineRegex.exec(fullDocBlock)
 			}
+
 		}
 		return {
 			description: descriptionParts.join("\n"),
