@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, Hover, HoverParams, ResponseError, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -111,5 +111,35 @@ export class ElementRunner extends Logger {
 		}
 
 		return undefined
+	}
+
+	public async referenceCapability(params: ReferenceParams): Promise<Location[] | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) {
+			return undefined
+		}
+
+		if (context.foundNodeByLine === undefined) {
+			return undefined
+		}
+
+		const locations: Location[] = []
+		for (const element of this.elements) {
+			try {
+				const elementLocations = await element.referenceCapability(context, params)
+				if (elementLocations === undefined) continue
+
+				locations.push(...elementLocations)
+
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (locations.length === 0) {
+			return undefined
+		}
+
+		return locations
 	}
 }

@@ -21,7 +21,6 @@ import { AbstractCapability } from './capabilities/AbstractCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { ReferenceCapability } from './capabilities/ReferenceCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
 import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
@@ -104,7 +103,7 @@ export class LanguageServer extends Logger {
 		this.addFunctionalityInstance(DefinitionCapability)
 		this.addFunctionalityInstance(CompletionCapability)
 		// this.addFunctionalityInstance(HoverCapability)
-		this.addFunctionalityInstance(ReferenceCapability)
+		// this.addFunctionalityInstance(ReferenceCapability)
 		this.addFunctionalityInstance(DocumentSymbolCapability)
 		this.addFunctionalityInstance(WorkspaceSymbolCapability)
 		// this.addFunctionalityInstance(CodeLensCapability)

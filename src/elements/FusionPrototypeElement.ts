@@ -4,11 +4,14 @@ import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStateme
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { Hover, HoverParams } from 'vscode-languageserver';
+import { Hover, HoverParams, Location } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
 import { Element } from './Element';
+
+// FusionObjectValue
+// FusionObjectValue
 
 export class FusionPrototypeElement extends Element<PrototypePathSegment | FusionObjectValue> {
 	public async hoverCapability(context: CapabilityContext<PrototypePathSegment | FusionObjectValue>, params: HoverParams): Promise<string | Hover | undefined> {
@@ -41,6 +44,38 @@ export class FusionPrototypeElement extends Element<PrototypePathSegment | Fusio
 			`prototype(${prototypeName}) {${statementsNamesMarkdown}}`,
 			"```"
 		].join("\n")
+	}
+
+	public async referenceCapability(context: CapabilityContext<PrototypePathSegment | FusionObjectValue>): Promise<Location[] | undefined> {
+		const foundNodeByLine = context.foundNodeByLine!
+		if (!foundNodeByLine) return undefined
+
+		const workspace = context.workspaces[0]!
+
+		const node = foundNodeByLine.getNode()
+		this.logVerbose(`Found node type "${node.constructor.name}"`)
+
+		const prototypeName = getPrototypeNameFromNode(node)
+		if (!prototypeName) return undefined
+
+		this.logDebug(`prototypeName "${prototypeName}"`)
+
+		const locations: Location[] = []
+
+		for (const otherParsedFile of workspace.parsedFiles) {
+			for (const nodeType of [PrototypePathSegment, FusionObjectValue]) {
+				const otherNodes = otherParsedFile.getNodesByType(<any>nodeType) ?? []
+				for (const otherNode of otherNodes) {
+					if (getPrototypeNameFromNode(otherNode.getNode()) !== prototypeName) continue
+					locations.push({
+						uri: otherParsedFile.uri,
+						range: otherNode.getPositionAsRange()
+					})
+				}
+			}
+		}
+
+		return locations
 	}
 
 	protected * createStatementNamesFromPrototypeNode(prototypeName: string, positionedPrototypeNode: LinePositionedNode<PrototypePathSegment>) {

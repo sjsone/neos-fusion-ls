@@ -7,7 +7,6 @@ import {
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { ReferenceCapability } from './capabilities/ReferenceCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
 import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
@@ -36,7 +35,7 @@ documents.onDidChangeContent(change => languageserver.onDidChangeContent(change)
 connection.onDidChangeWatchedFiles(params => { languageserver.onDidChangeWatchedFiles(params) })
 
 connection.onDefinition(params => languageserver.runCapability(DefinitionCapability, params))
-connection.onReferences(params => languageserver.runCapability(ReferenceCapability, params))
+connection.onReferences(params => languageserver.elementRunner.referenceCapability(params))
 connection.onCompletion(params => languageserver.runCapability(CompletionCapability, params))
 connection.onCompletionResolve(item => item)
 connection.onHover(params => languageserver.elementRunner.hoverCapability(params))

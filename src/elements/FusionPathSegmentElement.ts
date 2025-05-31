@@ -39,10 +39,7 @@ export class FusionPathSegmentElement extends Element<PathSegment> {
 			if (!documentationDefinition) continue
 
 			return [
-				documentationDefinition.text,
-				"```fusion",
-				`/// ${documentationDefinition.type}`,
-				"```"
+				`\`${documentationDefinition.type}\` ${documentationDefinition.text}`,
 			].join("\n")
 		}
 

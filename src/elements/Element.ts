@@ -1,5 +1,5 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { CodeLens, CodeLensParams, Hover, HoverParams } from 'vscode-languageserver';
+import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams } from 'vscode-languageserver';
 import { Logger } from '../common/Logging';
 import { CapabilityContext } from './CapabilityContext';
 
@@ -25,8 +25,8 @@ export abstract class Element<Node extends AbstractNode = AbstractNode> extends 
 		return undefined
 	}
 
-	public async referenceCapability() {
-
+	public async referenceCapability(context: CapabilityContext<Node>, params: ReferenceParams): Promise<Location[] | undefined> {
+		return undefined
 	}
 
 	public async renameCapability() {
