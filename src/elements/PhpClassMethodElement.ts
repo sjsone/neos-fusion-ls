@@ -6,6 +6,7 @@ import { Element } from './Element';
 export class PhpClassMethodElement extends Element<PhpClassMethodNode> {
 	public async hoverCapability(context: CapabilityContext<PhpClassMethodNode>, params: HoverParams): Promise<string | Hover | undefined> {
 		const node = context.foundNodeByLine!.getNode()
+		if (!(node instanceof PhpClassMethodNode)) return undefined
 
 		const header = `EEL-Helper *${node.eelHelper.identifier}*.**${node.identifier}** \n`
 

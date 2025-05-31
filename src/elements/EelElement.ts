@@ -12,6 +12,8 @@ import { Element } from './Element';
 export class EelElement extends Element<ObjectPathNode> {
 	public async hoverCapability(context: CapabilityContext<ObjectPathNode>, params: HoverParams): Promise<string | Hover | undefined> {
 		const node = context.foundNodeByLine!.getNode()
+		if (!(node instanceof ObjectPathNode)) return undefined
+
 		const workspace = context.workspaces[0]!
 		const objectNode = node.parent
 		if (!(objectNode instanceof ObjectNode)) return undefined

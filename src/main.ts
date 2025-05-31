@@ -4,21 +4,18 @@ import {
     TextDocuments,
     createConnection
 } from "vscode-languageserver/node"
-import { LanguageServer } from './LanguageServer'
-import { CodeLensCapability } from './capabilities/CodeLensCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { HoverCapability } from './capabilities/HoverCapability'
 import { ReferenceCapability } from './capabilities/ReferenceCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
+import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
 import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
+import { resolveClient } from './ClientBuilding'
 import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
-import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
-import { GenericClient } from './client/GenericClient'
-import { resolveClient } from './ClientBuilding'
+import { LanguageServer } from './LanguageServer'
 
 export type FusionDocument = TextDocument
 
@@ -45,7 +42,7 @@ connection.onCompletionResolve(item => item)
 connection.onHover(params => languageserver.elementRunner.hoverCapability(params))
 connection.onDocumentSymbol(params => languageserver.runCapability(DocumentSymbolCapability, params))
 connection.onWorkspaceSymbol(params => languageserver.runCapability(WorkspaceSymbolCapability, params))
-connection.onCodeLens(params => languageserver.runCapability(CodeLensCapability, params))
+connection.onCodeLens(params => languageserver.elementRunner.codeLensCapability(params))
 connection.onPrepareRename(params => languageserver.runCapability(RenamePrepareCapability, params))
 connection.onRenameRequest(params => languageserver.runCapability(RenameCapability, params))
 connection.onSignatureHelp(params => languageserver.runCapability(SignatureHelpCapability, params))

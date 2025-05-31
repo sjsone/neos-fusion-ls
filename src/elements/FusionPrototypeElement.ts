@@ -13,6 +13,8 @@ import { Element } from './Element';
 export class FusionPrototypeElement extends Element<PrototypePathSegment | FusionObjectValue> {
 	public async hoverCapability(context: CapabilityContext<PrototypePathSegment | FusionObjectValue>, params: HoverParams): Promise<string | Hover | undefined> {
 		const node = context.foundNodeByLine!.getNode()
+		if (!(node instanceof PrototypePathSegment) && !(node instanceof FusionObjectValue)) return undefined
+
 		const prototypeName = getPrototypeNameFromNode(node)
 		if (prototypeName === null) return undefined
 

@@ -1,4 +1,4 @@
-import { HandlerResult, Hover, HoverParams, ResponseError, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, Hover, HoverParams, ResponseError, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -18,7 +18,7 @@ export class ElementRunner extends Logger {
 		this.elements.push(element)
 	}
 
-	protected buildContext(params: TextDocumentPositionParams | WorkspaceSymbolParams): CapabilityContext | undefined {
+	protected buildContext(params: TextDocumentPositionParams | WorkspaceSymbolParams | CodeLensParams): CapabilityContext | undefined {
 		const workspaces = this.languageServer.fusionWorkspaces
 		if (!('textDocument' in params)) {
 			return new CapabilityContext(workspaces)
@@ -38,8 +38,12 @@ export class ElementRunner extends Logger {
 		return new CapabilityContext(workspaces, parsedFusionFile, foundNodeByLine)
 	}
 
-	protected buildContextNodeByLine(params: TextDocumentPositionParams, parsedFusionFile: ParsedFusionFile | undefined) {
+	protected buildContextNodeByLine(params: TextDocumentPositionParams | CodeLensParams, parsedFusionFile: ParsedFusionFile | undefined) {
 		if (parsedFusionFile === undefined) {
+			return undefined
+		}
+
+		if (!('position' in params)) {
 			return undefined
 		}
 
@@ -49,6 +53,35 @@ export class ElementRunner extends Logger {
 		this.logDebug(`${line}/${column} ${params.textDocument.uri}`)
 
 		return parsedFusionFile.getNodeByLineAndColumn(line, column)
+	}
+
+	public async codeLensCapability(params: CodeLensParams): Promise<CodeLens[] | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) {
+			return undefined
+		}
+
+		if (context.foundNodeByLine === undefined) {
+			return undefined
+		}
+
+		const codeLenses: Array<CodeLens> = []
+		for (const element of this.elements) {
+			try {
+				const elementCodeLenses = await element.codeLensCapability(context, params)
+				if (elementCodeLenses === undefined) continue
+
+				codeLenses.push(...elementCodeLenses)
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (codeLenses.length === 0) {
+			return undefined
+		}
+
+		return codeLenses
 	}
 
 	public async hoverCapability(params: HoverParams): Promise<Hover | ResponseError<void> | undefined> {
@@ -62,15 +95,19 @@ export class ElementRunner extends Logger {
 		}
 
 		for (const element of this.elements) {
-			const hover = await element.hoverCapability(context, params)
-			if (hover === undefined) continue
+			try {
+				const hover = await element.hoverCapability(context, params)
+				if (hover === undefined) continue
 
-			if (typeof hover === "string") return {
-				contents: { kind: "markdown", value: hover },
-				range: context.foundNodeByLine!.getPositionAsRange()
+				if (typeof hover === "string") return {
+					contents: { kind: "markdown", value: hover },
+					range: context.foundNodeByLine!.getPositionAsRange()
+				}
+
+				return hover
+			} catch (error) {
+				this.logError(error)
 			}
-
-			return hover
 		}
 
 		return undefined

@@ -8,6 +8,7 @@ import { Element } from './Element';
 export class ResourceUriElement extends Element<ResourceUriNode> {
 	public async hoverCapability(context: CapabilityContext<ResourceUriNode>, params: HoverParams): Promise<string | Hover | undefined> {
 		const node = context.foundNodeByLine!.getNode()
+		if (!(node instanceof ResourceUriNode)) return undefined
 		if (!node.canBeFound()) return undefined
 
 		const workspace = context.workspaces[0]!

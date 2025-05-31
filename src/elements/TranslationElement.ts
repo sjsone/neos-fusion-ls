@@ -8,6 +8,7 @@ export class TranslationElement extends Element<TranslationShortHandNode> {
 	public async hoverCapability(context: CapabilityContext<TranslationShortHandNode>, params: HoverParams): Promise<string | Hover | undefined> {
 		const workspace = context.workspaces[0]!
 		const linePositionedNode = context.foundNodeByLine!
+		if (!(linePositionedNode.getNode() instanceof TranslationShortHandNode)) return undefined
 
 		const shortHandIdentifier = XLIFFService.readShortHandIdentifier(linePositionedNode.getNode().getValue())
 		const translationFiles = await XLIFFService.getMatchingTranslationFiles(workspace, shortHandIdentifier)

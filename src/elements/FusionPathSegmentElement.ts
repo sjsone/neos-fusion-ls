@@ -10,14 +10,14 @@ import { findParent } from '../common/util';
 
 export class FusionPathSegmentElement extends Element<PathSegment> {
 	public async hoverCapability(context: CapabilityContext<PathSegment>, params: HoverParams): Promise<string | Hover | undefined> {
-		const workspace = context.workspaces[0]!
 		const node = context.foundNodeByLine!.getNode()
-		// console.log("Hovering", node.identifier)
+		if (!(node instanceof PathSegment)) return undefined
+
+		const workspace = context.workspaces[0]!
 		const objectStatement = findParent(node, ObjectStatement)
 		if (!objectStatement) return undefined
 
 		const pathForNode = MergedArrayTreeService.buildPathForNode(node).slice(1)
-		// console.log("pathForNode", pathForNode)
 
 		const configurationList = NodeService.getFusionConfigurationListUntilNode(node, workspace)
 		const configuration = configurationList[0]?.configuration

@@ -18,7 +18,6 @@ import { createNodeTypeFileAction } from './actions/CreateNodeTypeFileAction'
 import { openDocumentationAction } from './actions/OpenDocumentationAction'
 import { replaceDeprecatedQuickFixAction } from './actions/ReplaceDeprecatedQuickFixAction'
 import { AbstractCapability } from './capabilities/AbstractCapability'
-import { CodeLensCapability } from './capabilities/CodeLensCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
@@ -53,6 +52,7 @@ import { ParsedYaml } from './neos/FlowConfigurationFile'
 import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
 import { EelElement } from './elements/EelElement'
 import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
+import { NodeTypeElement } from './elements/NodeTypeElement'
 
 
 const CodeActions = [
@@ -99,6 +99,7 @@ export class LanguageServer extends Logger {
 		this.elementRunner.addElement(new FlowConfigurationElement)
 		this.elementRunner.addElement(new EelElement)
 		this.elementRunner.addElement(new FusionPathSegmentElement)
+		this.elementRunner.addElement(new NodeTypeElement)
 
 		this.addFunctionalityInstance(DefinitionCapability)
 		this.addFunctionalityInstance(CompletionCapability)
@@ -106,7 +107,7 @@ export class LanguageServer extends Logger {
 		this.addFunctionalityInstance(ReferenceCapability)
 		this.addFunctionalityInstance(DocumentSymbolCapability)
 		this.addFunctionalityInstance(WorkspaceSymbolCapability)
-		this.addFunctionalityInstance(CodeLensCapability)
+		// this.addFunctionalityInstance(CodeLensCapability)
 		this.addFunctionalityInstance(RenamePrepareCapability)
 		this.addFunctionalityInstance(RenameCapability)
 		this.addFunctionalityInstance(SignatureHelpCapability)

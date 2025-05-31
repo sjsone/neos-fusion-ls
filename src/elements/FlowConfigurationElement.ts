@@ -10,6 +10,10 @@ export class FlowConfigurationElement extends Element<FlowConfigurationPathPartN
 		const workspace = context.workspaces[0]!
 		const linePositionedNode = context.foundNodeByLine!
 		const partNode = linePositionedNode.getNode()
+		if (!(partNode instanceof FlowConfigurationPathPartNode)) {
+			return undefined
+		}
+
 		const node = partNode.parent
 
 		const partIndex = node["path"].indexOf(partNode)
