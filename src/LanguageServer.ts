@@ -10,10 +10,8 @@ import {
 	TextDocumentChangeEvent,
 	TextDocumentSyncKind,
 	TextDocuments,
-	_Connection,
-	MessageActionItem
+	_Connection
 } from "vscode-languageserver/node"
-import { type ExtensionConfiguration } from './ExtensionConfiguration'
 import { addFusionIgnoreSemanticCommentAction } from './actions/AddFusionIgnoreSemanticCommentAction'
 import { addFusionNoAutoincludeNeededSemanticCommentAction } from './actions/AddFusionNoAutoincludeNeededSemanticCommentAction'
 import { createNodeTypeFileAction } from './actions/CreateNodeTypeFileAction'
@@ -24,15 +22,22 @@ import { CodeLensCapability } from './capabilities/CodeLensCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { HoverCapability } from './capabilities/HoverCapability'
 import { ReferenceCapability } from './capabilities/ReferenceCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
+import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
 import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
+import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
-import { LogService, Logger } from './common/Logging'
-import { clearLineDataCache, uriToPath } from './common/util'
+import { Logger } from './common/Logging'
+import { uriToPath } from './common/util'
+import { ElementRunner } from './ElementRunner'
+import { FusionPrototypeElement } from './elements/FusionPrototypeElement'
+import { PhpClassElement } from './elements/PhpClassElement'
+import { PhpClassMethodElement } from './elements/PhpClassMethodElement'
+import { ResourceUriElement } from './elements/ResourceUriElement'
+import { TranslationElement } from './elements/TranslationElement'
 import { AbstractFileChangeHandler } from './fileChangeHandler/AbstractFileChangeHandler'
 import { FusionFileChangeHandler } from './fileChangeHandler/FusionFileChangeHandler'
 import { PhpFileChangeHandler } from './fileChangeHandler/PhpFileChangeHandler'
@@ -41,12 +46,13 @@ import { YamlFileChangeHandler } from './fileChangeHandler/YamlFileChangeHandler
 import { FusionWorkspace } from './fusion/FusionWorkspace'
 import { AbstractLanguageFeature } from './languageFeatures/AbstractLanguageFeature'
 import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
+import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatureContext'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
-import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatureContext'
-import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
-import { Client } from './client/Client'
+import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
+import { EelElement } from './elements/EelElement'
+import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
 
 
 const CodeActions = [
@@ -72,6 +78,8 @@ export class LanguageServer extends Logger {
 	protected functionalityInstances: Map<new (...args: any[]) => AbstractFunctionality, AbstractFunctionality> = new Map()
 	protected fileChangeHandlerInstances: Map<new (...args: any[]) => AbstractFileChangeHandler, AbstractFileChangeHandler> = new Map()
 
+	public readonly elementRunner: ElementRunner
+
 	constructor(protected connection: _Connection, protected documents: TextDocuments<FusionDocument>, public client: Client) {
 		super()
 
@@ -82,9 +90,19 @@ export class LanguageServer extends Logger {
 		this.connection = connection
 		this.documents = documents
 
+		this.elementRunner = new ElementRunner(this)
+		this.elementRunner.addElement(new PhpClassElement)
+		this.elementRunner.addElement(new PhpClassMethodElement)
+		this.elementRunner.addElement(new ResourceUriElement)
+		this.elementRunner.addElement(new TranslationElement)
+		this.elementRunner.addElement(new FusionPrototypeElement)
+		this.elementRunner.addElement(new FlowConfigurationElement)
+		this.elementRunner.addElement(new EelElement)
+		this.elementRunner.addElement(new FusionPathSegmentElement)
+
 		this.addFunctionalityInstance(DefinitionCapability)
 		this.addFunctionalityInstance(CompletionCapability)
-		this.addFunctionalityInstance(HoverCapability)
+		// this.addFunctionalityInstance(HoverCapability)
 		this.addFunctionalityInstance(ReferenceCapability)
 		this.addFunctionalityInstance(DocumentSymbolCapability)
 		this.addFunctionalityInstance(WorkspaceSymbolCapability)
