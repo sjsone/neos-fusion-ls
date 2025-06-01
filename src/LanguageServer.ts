@@ -23,14 +23,17 @@ import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
-import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
 import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
 import { Logger } from './common/Logging'
 import { uriToPath } from './common/util'
 import { ElementRunner } from './ElementRunner'
+import { EelElement } from './elements/EelElement'
+import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
+import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
 import { FusionPrototypeElement } from './elements/FusionPrototypeElement'
+import { NodeTypeElement } from './elements/NodeTypeElement'
 import { PhpClassElement } from './elements/PhpClassElement'
 import { PhpClassMethodElement } from './elements/PhpClassMethodElement'
 import { ResourceUriElement } from './elements/ResourceUriElement'
@@ -47,10 +50,6 @@ import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatur
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
-import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
-import { EelElement } from './elements/EelElement'
-import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
-import { NodeTypeElement } from './elements/NodeTypeElement'
 
 
 const CodeActions = [
@@ -104,7 +103,7 @@ export class LanguageServer extends Logger {
 		// this.addFunctionalityInstance(HoverCapability)
 		// this.addFunctionalityInstance(ReferenceCapability)
 		this.addFunctionalityInstance(DocumentSymbolCapability)
-		this.addFunctionalityInstance(WorkspaceSymbolCapability)
+		// this.addFunctionalityInstance(WorkspaceSymbolCapability)
 		// this.addFunctionalityInstance(CodeLensCapability)
 		this.addFunctionalityInstance(RenamePrepareCapability)
 		this.addFunctionalityInstance(RenameCapability)

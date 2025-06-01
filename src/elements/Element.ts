@@ -1,5 +1,5 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, SignatureHelp, SignatureHelpParams } from 'vscode-languageserver';
+import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, SignatureHelp, SignatureHelpParams, SymbolInformation, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { Logger } from '../common/Logging';
 import { CapabilityContext } from './CapabilityContext';
 
@@ -41,7 +41,7 @@ export abstract class Element<Node extends AbstractNode = AbstractNode> extends 
 		return undefined
 	}
 
-	public async workspaceSymbolCapability() {
-
+	public async workspaceSymbolCapability(context: CapabilityContext<AbstractNode>, params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | undefined> {
+		return undefined
 	}
 }

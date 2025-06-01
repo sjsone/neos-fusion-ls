@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, SignatureHelp, SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -163,5 +163,29 @@ export class ElementRunner extends Logger {
 		}
 
 		return undefined
+	}
+
+	public async workspaceSymbolCapability(params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) {
+			return undefined
+		}
+
+		const symbols: Array<WorkspaceSymbol | SymbolInformation> = []
+		for (const element of this.elements) {
+			try {
+				const elementSymbols = await element.workspaceSymbolCapability(context, params)
+				if (elementSymbols === undefined) continue
+
+				symbols.push(...elementSymbols)
+
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (symbols.length === 0) return undefined
+
+		return symbols
 	}
 }

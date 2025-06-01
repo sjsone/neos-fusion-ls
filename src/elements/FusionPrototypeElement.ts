@@ -4,11 +4,12 @@ import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStateme
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { Hover, HoverParams, Location } from 'vscode-languageserver';
+import { Hover, HoverParams, Location, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
 import { Element } from './Element';
+import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
 
 // FusionObjectValue
 // FusionObjectValue
@@ -98,5 +99,41 @@ export class FusionPrototypeElement extends Element<PrototypePathSegment | Fusio
 				yield `/// ${statement.type} ${statement.text}`
 			}
 		}
+	}
+
+	public async workspaceSymbolCapability(context: CapabilityContext<AbstractNode>, params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | undefined> {
+		const symbols: WorkspaceSymbol[] = []
+
+		for (const workspace of context.workspaces) {
+			for (const parsedFile of workspace.parsedFiles) {
+
+				// TODO: concept which workspace symbols should be shown
+				for (const prototypePathSegment of parsedFile.prototypeCreations) {
+					const node = prototypePathSegment.getNode()
+
+					symbols.push({
+						name: node.identifier,
+						location: { uri: parsedFile.uri, range: prototypePathSegment.getPositionAsRange() },
+						kind: SymbolKind.Class,
+					})
+				}
+
+
+				const neosPackage = parsedFile.workspace.neosWorkspace.getPackageByUri(parsedFile.uri)
+
+				for (const prototypePathSegment of parsedFile.prototypeOverwrites) {
+					const node = prototypePathSegment.getNode()
+
+					symbols.push({
+						name: `${node.identifier} [${neosPackage?.getPackageName()}]`,
+						location: { uri: parsedFile.uri, range: prototypePathSegment.getPositionAsRange() },
+						kind: SymbolKind.Constructor,
+					})
+				}
+
+			}
+		}
+
+		return symbols
 	}
 }

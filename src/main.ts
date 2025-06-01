@@ -9,7 +9,6 @@ import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
-import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
 import { resolveClient } from './ClientBuilding'
 import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
@@ -39,7 +38,7 @@ connection.onCompletion(params => languageserver.runCapability(CompletionCapabil
 connection.onCompletionResolve(item => item)
 connection.onHover(params => languageserver.elementRunner.hoverCapability(params))
 connection.onDocumentSymbol(params => languageserver.runCapability(DocumentSymbolCapability, params))
-connection.onWorkspaceSymbol(params => languageserver.runCapability(WorkspaceSymbolCapability, params))
+connection.onWorkspaceSymbol(params => languageserver.elementRunner.workspaceSymbolCapability(params))
 connection.onCodeLens(params => languageserver.elementRunner.codeLensCapability(params))
 connection.onPrepareRename(params => languageserver.runCapability(RenamePrepareCapability, params))
 connection.onRenameRequest(params => languageserver.runCapability(RenameCapability, params))
