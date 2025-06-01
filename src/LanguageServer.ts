@@ -23,7 +23,6 @@ import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { RenameCapability } from './capabilities/RenameCapability'
 import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
-import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
 import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
 import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
@@ -109,7 +108,7 @@ export class LanguageServer extends Logger {
 		// this.addFunctionalityInstance(CodeLensCapability)
 		this.addFunctionalityInstance(RenamePrepareCapability)
 		this.addFunctionalityInstance(RenameCapability)
-		this.addFunctionalityInstance(SignatureHelpCapability)
+		// this.addFunctionalityInstance(SignatureHelpCapability)
 
 		this.addFunctionalityInstance(InlayHintLanguageFeature)
 		this.addFunctionalityInstance(SemanticTokensLanguageFeature)

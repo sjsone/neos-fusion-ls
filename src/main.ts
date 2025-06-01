@@ -44,7 +44,7 @@ connection.onWorkspaceSymbol(params => languageserver.runCapability(WorkspaceSym
 connection.onCodeLens(params => languageserver.elementRunner.codeLensCapability(params))
 connection.onPrepareRename(params => languageserver.runCapability(RenamePrepareCapability, params))
 connection.onRenameRequest(params => languageserver.runCapability(RenameCapability, params))
-connection.onSignatureHelp(params => languageserver.runCapability(SignatureHelpCapability, params))
+connection.onSignatureHelp(params => languageserver.elementRunner.signatureHelpCapability(params))
 connection.onCodeAction(params => languageserver.onCodeAction(params))
 
 connection.languages.semanticTokens.on(params => languageserver.runLanguageFeature(SemanticTokensLanguageFeature, params))

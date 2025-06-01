@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, SignatureHelp, SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -141,5 +141,27 @@ export class ElementRunner extends Logger {
 		}
 
 		return locations
+	}
+
+	public async signatureHelpCapability(params: SignatureHelpParams): Promise<SignatureHelp | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) {
+			return undefined
+		}
+
+		if (context.foundNodeByLine === undefined) {
+			return undefined
+		}
+
+		for (const element of this.elements) {
+			try {
+				const signatureHelp = await element.signatureHelpCapability(context, params)
+				if (signatureHelp !== undefined) return signatureHelp
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		return undefined
 	}
 }
