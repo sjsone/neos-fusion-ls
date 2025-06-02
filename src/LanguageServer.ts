@@ -21,8 +21,6 @@ import { AbstractCapability } from './capabilities/AbstractCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { RenameCapability } from './capabilities/RenameCapability'
-import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
 import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
@@ -105,8 +103,8 @@ export class LanguageServer extends Logger {
 		this.addFunctionalityInstance(DocumentSymbolCapability)
 		// this.addFunctionalityInstance(WorkspaceSymbolCapability)
 		// this.addFunctionalityInstance(CodeLensCapability)
-		this.addFunctionalityInstance(RenamePrepareCapability)
-		this.addFunctionalityInstance(RenameCapability)
+		// this.addFunctionalityInstance(RenamePrepareCapability)
+		// this.addFunctionalityInstance∏(RenameCapability)
 		// this.addFunctionalityInstance(SignatureHelpCapability)
 
 		this.addFunctionalityInstance(InlayHintLanguageFeature)

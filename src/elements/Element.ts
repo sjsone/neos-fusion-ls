@@ -1,5 +1,5 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, SignatureHelp, SignatureHelpParams, SymbolInformation, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { CodeLens, CodeLensParams, CreateFile, DeleteFile, Hover, HoverParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { Logger } from '../common/Logging';
 import { CapabilityContext } from './CapabilityContext';
 
@@ -29,19 +29,19 @@ export abstract class Element<Node extends AbstractNode = AbstractNode> extends 
 		return undefined
 	}
 
-	public async renameCapability() {
-
+	public async renameCapability(context: CapabilityContext<Node>, params: RenameParams): Promise<Array<TextDocumentEdit | CreateFile | RenameFile | DeleteFile> | undefined> {
+		return undefined
 	}
 
-	public async renamePrepareCapability() {
-
+	public async renamePrepareCapability(context: CapabilityContext<Node>, params: PrepareRenameParams): Promise<Range | undefined> {
+		return undefined
 	}
 
 	public async signatureHelpCapability(context: CapabilityContext<Node>, params: SignatureHelpParams): Promise<SignatureHelp | undefined> {
 		return undefined
 	}
 
-	public async workspaceSymbolCapability(context: CapabilityContext<AbstractNode>, params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | undefined> {
+	public async workspaceSymbolCapability(context: CapabilityContext<Node>, params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | undefined> {
 		return undefined
 	}
 }

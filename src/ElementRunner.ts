@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, Hover, HoverParams, Location, ReferenceParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentPositionParams, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, CreateFile, DeleteFile, Hover, HoverParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -57,13 +57,9 @@ export class ElementRunner extends Logger {
 
 	public async codeLensCapability(params: CodeLensParams): Promise<CodeLens[] | ResponseError<void> | undefined> {
 		const context = this.buildContext(params)
-		if (context === undefined) {
-			return undefined
-		}
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
 
-		if (context.foundNodeByLine === undefined) {
-			return undefined
-		}
 
 		const codeLenses: Array<CodeLens> = []
 		for (const element of this.elements) {
@@ -86,13 +82,9 @@ export class ElementRunner extends Logger {
 
 	public async hoverCapability(params: HoverParams): Promise<Hover | ResponseError<void> | undefined> {
 		const context = this.buildContext(params)
-		if (context === undefined) {
-			return undefined
-		}
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
 
-		if (context.foundNodeByLine === undefined) {
-			return undefined
-		}
 
 		for (const element of this.elements) {
 			try {
@@ -115,13 +107,9 @@ export class ElementRunner extends Logger {
 
 	public async referenceCapability(params: ReferenceParams): Promise<Location[] | ResponseError<void> | undefined> {
 		const context = this.buildContext(params)
-		if (context === undefined) {
-			return undefined
-		}
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
 
-		if (context.foundNodeByLine === undefined) {
-			return undefined
-		}
 
 		const locations: Location[] = []
 		for (const element of this.elements) {
@@ -145,13 +133,9 @@ export class ElementRunner extends Logger {
 
 	public async signatureHelpCapability(params: SignatureHelpParams): Promise<SignatureHelp | ResponseError<void> | undefined> {
 		const context = this.buildContext(params)
-		if (context === undefined) {
-			return undefined
-		}
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
 
-		if (context.foundNodeByLine === undefined) {
-			return undefined
-		}
 
 		for (const element of this.elements) {
 			try {
@@ -187,5 +171,49 @@ export class ElementRunner extends Logger {
 		if (symbols.length === 0) return undefined
 
 		return symbols
+	}
+
+	public async renamePrepareCapability(params: PrepareRenameParams): Promise<Range | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
+
+		for (const element of this.elements) {
+			try {
+				const range = await element.renamePrepareCapability(context, params)
+				if (range !== undefined) return range
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		return undefined
+	}
+
+	public async renameCapability(params: RenameParams): Promise<WorkspaceEdit | ResponseError<void> | undefined> {
+		const context = this.buildContext(params)
+		if (context === undefined) {
+			return undefined
+		}
+
+		const documentChanges: Array<TextDocumentEdit | CreateFile | RenameFile | DeleteFile> = []
+
+		for (const element of this.elements) {
+			try {
+				const elementSymbols = await element.renameCapability(context, params)
+				if (elementSymbols === undefined) continue
+
+				documentChanges.push(...elementSymbols)
+
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (documentChanges.length === 0) return undefined
+
+		return {
+			documentChanges
+		} as WorkspaceEdit
 	}
 }
