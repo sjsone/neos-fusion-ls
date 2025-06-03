@@ -1,9 +1,10 @@
-import { CodeLens, CodeLensParams, CreateFile, DeleteFile, Hover, HoverParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, CreateFile, DeleteFile, Hover, HoverParams, InlayHint, InlayHintParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
 import { Element } from './elements/Element'
 import { ParsedFusionFile } from './fusion/ParsedFusionFile'
+import { LanguageFeatureContext } from './elements/LanguageFeatureContext'
 
 export class ElementRunner extends Logger {
 	protected elements: Element[] = []
@@ -18,7 +19,7 @@ export class ElementRunner extends Logger {
 		this.elements.push(element)
 	}
 
-	protected buildContext(params: TextDocumentPositionParams | WorkspaceSymbolParams | CodeLensParams): CapabilityContext | undefined {
+	protected buildCapabilityContext(params: TextDocumentPositionParams | WorkspaceSymbolParams | CodeLensParams): CapabilityContext | undefined {
 		const workspaces = this.languageServer.fusionWorkspaces
 		if (!('textDocument' in params)) {
 			return new CapabilityContext(workspaces)
@@ -36,6 +37,23 @@ export class ElementRunner extends Logger {
 		const foundNodeByLine = this.buildContextNodeByLine(params, parsedFusionFile)
 
 		return new CapabilityContext(workspaces, parsedFusionFile, foundNodeByLine)
+	}
+
+	protected buildLanguageFeatureContext(params: InlayHintParams): LanguageFeatureContext | undefined {
+		const workspaces = this.languageServer.fusionWorkspaces
+		if (!('textDocument' in params)) {
+			return new LanguageFeatureContext(workspaces)
+		}
+		const uri = params.textDocument.uri
+
+		const workspace = this.languageServer.getWorkspaceForFileUri(uri)
+		if (workspace === undefined) {
+			this.logDebug(`Could not find workspace for URI: ${uri}`)
+			return undefined
+		}
+
+		const parsedFusionFile = workspace.getParsedFileByUri(uri)
+		return new LanguageFeatureContext(workspaces, parsedFusionFile)
 	}
 
 	protected buildContextNodeByLine(params: TextDocumentPositionParams | CodeLensParams, parsedFusionFile: ParsedFusionFile | undefined) {
@@ -56,7 +74,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async codeLensCapability(params: CodeLensParams): Promise<CodeLens[] | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) return undefined
 		if (context.foundNodeByLine === undefined) return undefined
 
@@ -81,7 +99,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async hoverCapability(params: HoverParams): Promise<Hover | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) return undefined
 		if (context.foundNodeByLine === undefined) return undefined
 
@@ -106,7 +124,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async referenceCapability(params: ReferenceParams): Promise<Location[] | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) return undefined
 		if (context.foundNodeByLine === undefined) return undefined
 
@@ -132,7 +150,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async signatureHelpCapability(params: SignatureHelpParams): Promise<SignatureHelp | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) return undefined
 		if (context.foundNodeByLine === undefined) return undefined
 
@@ -150,7 +168,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async workspaceSymbolCapability(params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) {
 			return undefined
 		}
@@ -174,7 +192,7 @@ export class ElementRunner extends Logger {
 	}
 
 	public async renamePrepareCapability(params: PrepareRenameParams): Promise<Range | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
+		const context = this.buildCapabilityContext(params)
 		if (context === undefined) return undefined
 		if (context.foundNodeByLine === undefined) return undefined
 
@@ -191,10 +209,8 @@ export class ElementRunner extends Logger {
 	}
 
 	public async renameCapability(params: RenameParams): Promise<WorkspaceEdit | ResponseError<void> | undefined> {
-		const context = this.buildContext(params)
-		if (context === undefined) {
-			return undefined
-		}
+		const context = this.buildCapabilityContext(params)
+		if (context === undefined) return undefined
 
 		const documentChanges: Array<TextDocumentEdit | CreateFile | RenameFile | DeleteFile> = []
 
@@ -215,5 +231,27 @@ export class ElementRunner extends Logger {
 		return {
 			documentChanges
 		} as WorkspaceEdit
+	}
+
+	public async inlayHintLanguageFeature(params: InlayHintParams): Promise<InlayHint[] | undefined> {
+		const context = this.buildLanguageFeatureContext(params)
+		if (context === undefined) return undefined
+
+		const inlayHints: InlayHint[] = []
+
+		for (const element of this.elements) {
+			try {
+				const elementInlayHints = await element.inlayHintLanguageFeature(context, params)
+				if (elementInlayHints === undefined) continue
+
+				inlayHints.push(...elementInlayHints)
+
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (inlayHints.length === 0) return undefined
+		return inlayHints
 	}
 }

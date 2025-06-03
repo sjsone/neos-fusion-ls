@@ -8,7 +8,6 @@ import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { resolveClient } from './ClientBuilding'
-import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { LanguageServer } from './LanguageServer'
 
@@ -44,7 +43,7 @@ connection.onSignatureHelp(params => languageserver.elementRunner.signatureHelpC
 connection.onCodeAction(params => languageserver.onCodeAction(params))
 
 connection.languages.semanticTokens.on(params => languageserver.runLanguageFeature(SemanticTokensLanguageFeature, params))
-connection.languages.inlayHint.on(params => languageserver.runLanguageFeature(InlayHintLanguageFeature, params))
+connection.languages.inlayHint.on(params => languageserver.elementRunner.inlayHintLanguageFeature(params))
 
 
 
