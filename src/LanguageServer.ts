@@ -20,7 +20,6 @@ import { replaceDeprecatedQuickFixAction } from './actions/ReplaceDeprecatedQuic
 import { AbstractCapability } from './capabilities/AbstractCapability'
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
-import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
@@ -47,6 +46,7 @@ import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatur
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
+import { DocumentSymbolElement } from './elements/DocumentSymbolElement'
 
 
 const CodeActions = [
@@ -94,12 +94,13 @@ export class LanguageServer extends Logger {
 		this.elementRunner.addElement(new EelElement)
 		this.elementRunner.addElement(new FusionPathSegmentElement)
 		this.elementRunner.addElement(new NodeTypeElement)
+		this.elementRunner.addElement(new DocumentSymbolElement)
 
 		this.addFunctionalityInstance(DefinitionCapability)
 		this.addFunctionalityInstance(CompletionCapability)
 		// this.addFunctionalityInstance(HoverCapability)
 		// this.addFunctionalityInstance(ReferenceCapability)
-		this.addFunctionalityInstance(DocumentSymbolCapability)
+		// this.addFunctionalityInstance(DocumentSymbolCapability)
 		// this.addFunctionalityInstance(WorkspaceSymbolCapability)
 		// this.addFunctionalityInstance(CodeLensCapability)
 		// this.addFunctionalityInstance(RenamePrepareCapability)

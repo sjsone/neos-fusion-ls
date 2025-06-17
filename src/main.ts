@@ -6,7 +6,6 @@ import {
 } from "vscode-languageserver/node"
 import { CompletionCapability } from './capabilities/CompletionCapability'
 import { DefinitionCapability } from './capabilities/DefinitionCapability'
-import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
 import { resolveClient } from './ClientBuilding'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { LanguageServer } from './LanguageServer'
@@ -34,7 +33,7 @@ connection.onReferences(params => languageserver.elementRunner.referenceCapabili
 connection.onCompletion(params => languageserver.runCapability(CompletionCapability, params))
 connection.onCompletionResolve(item => item)
 connection.onHover(params => languageserver.elementRunner.hoverCapability(params))
-connection.onDocumentSymbol(params => languageserver.runCapability(DocumentSymbolCapability, params))
+connection.onDocumentSymbol(params => languageserver.elementRunner.documentSymbolCapability(params))
 connection.onWorkspaceSymbol(params => languageserver.elementRunner.workspaceSymbolCapability(params))
 connection.onCodeLens(params => languageserver.elementRunner.codeLensCapability(params))
 connection.onPrepareRename(params => languageserver.elementRunner.renamePrepareCapability(params))

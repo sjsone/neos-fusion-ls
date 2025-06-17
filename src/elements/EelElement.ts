@@ -3,11 +3,13 @@ import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNod
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement';
 import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { Hover, HoverParams } from 'vscode-languageserver';
+import { DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, SymbolKind } from 'vscode-languageserver';
 import { NodeService } from '../common/NodeService';
-import { findParent } from '../common/util';
+import { findParent, getObjectIdentifier } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
 import { Element } from './Element';
+import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue';
+import { LiteralArrayNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralArrayNode';
 
 export class EelElement extends Element<ObjectPathNode> {
 	public async hoverCapability(context: CapabilityContext<ObjectPathNode>, params: HoverParams): Promise<string | Hover | undefined> {

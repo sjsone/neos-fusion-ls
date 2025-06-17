@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, CreateFile, DeleteFile, Hover, HoverParams, InlayHint, InlayHintParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -178,6 +178,35 @@ export class ElementRunner extends Logger {
 			try {
 				const elementSymbols = await element.workspaceSymbolCapability(context, params)
 				if (elementSymbols === undefined) continue
+
+				symbols.push(...elementSymbols)
+
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (symbols.length === 0) return undefined
+
+		return symbols
+	}
+
+	public async documentSymbolCapability(params: DocumentSymbolParams): Promise<DocumentSymbol[] | undefined> {
+		const context = this.buildCapabilityContext(params)
+		if (context === undefined) {
+			this.logError("No Context in documentSymbolCapability")
+			return undefined
+		}
+
+		this.logInfo("documentSymbolCapability requested")
+
+		const symbols: DocumentSymbol[] = []
+		for (const element of this.elements) {
+			try {
+				const elementSymbols = await element.documentSymbolCapability(context, params)
+				if (elementSymbols === undefined) continue
+
+				this.logInfo("  -> Test", elementSymbols)
 
 				symbols.push(...elementSymbols)
 

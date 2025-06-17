@@ -1,52 +1,49 @@
-import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
-import { Comment } from 'ts-fusion-parser/out/common/Comment'
-import { InlineEelNode } from 'ts-fusion-parser/out/dsl/afx/nodes/InlineEelNode'
-import { TagNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagNode'
-import { TextNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TextNode'
-import { LiteralArrayNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralArrayNode'
-import { BoolValue } from 'ts-fusion-parser/out/fusion/nodes/BoolValue'
-import { CharValue } from 'ts-fusion-parser/out/fusion/nodes/CharValue'
-import { DslExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/DslExpressionValue'
-import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue'
-import { FloatValue } from 'ts-fusion-parser/out/fusion/nodes/FloatValue'
-import { FusionFile } from 'ts-fusion-parser/out/fusion/nodes/FusionFile'
-import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue'
-import { IntValue } from 'ts-fusion-parser/out/fusion/nodes/IntValue'
-import { MetaPathSegment } from 'ts-fusion-parser/out/fusion/nodes/MetaPathSegment'
-import { NullValue } from 'ts-fusion-parser/out/fusion/nodes/NullValue'
-import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
-import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment'
-import { StatementList } from 'ts-fusion-parser/out/fusion/nodes/StatementList'
-import { StringValue } from 'ts-fusion-parser/out/fusion/nodes/StringValue'
-import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
-import { ValueUnset } from 'ts-fusion-parser/out/fusion/nodes/ValueUnset'
-import { DocumentSymbol, SymbolKind } from 'vscode-languageserver'
-import { LinePositionedNode } from '../common/LinePositionedNode'
-import { findParent, getObjectIdentifier } from '../common/util'
-import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
-import { AbstractCapability } from './AbstractCapability'
-import { CapabilityContext, ParsedFileCapabilityContext } from './CapabilityContext'
+import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
+import { Comment } from 'ts-fusion-parser/out/common/Comment';
+import { InlineEelNode } from 'ts-fusion-parser/out/dsl/afx/nodes/InlineEelNode';
+import { TagNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagNode';
+import { TextNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TextNode';
+import { LiteralArrayNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralArrayNode';
+import { BoolValue } from 'ts-fusion-parser/out/fusion/nodes/BoolValue';
+import { CharValue } from 'ts-fusion-parser/out/fusion/nodes/CharValue';
+import { DslExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/DslExpressionValue';
+import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue';
+import { FloatValue } from 'ts-fusion-parser/out/fusion/nodes/FloatValue';
+import { FusionFile } from 'ts-fusion-parser/out/fusion/nodes/FusionFile';
+import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue';
+import { IntValue } from 'ts-fusion-parser/out/fusion/nodes/IntValue';
+import { MetaPathSegment } from 'ts-fusion-parser/out/fusion/nodes/MetaPathSegment';
+import { NullValue } from 'ts-fusion-parser/out/fusion/nodes/NullValue';
+import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement';
+import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
+import { StatementList } from 'ts-fusion-parser/out/fusion/nodes/StatementList';
+import { StringValue } from 'ts-fusion-parser/out/fusion/nodes/StringValue';
+import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
+import { ValueUnset } from 'ts-fusion-parser/out/fusion/nodes/ValueUnset';
+import { DocumentSymbol, DocumentSymbolParams, SymbolKind } from 'vscode-languageserver';
+import { LinePositionedNode } from '../common/LinePositionedNode';
+import { findParent, getObjectIdentifier } from '../common/util';
+import { ParsedFusionFile } from '../fusion/ParsedFusionFile';
+import { CapabilityContext } from './CapabilityContext';
+import { Element } from './Element';
 
-export class DocumentSymbolCapability extends AbstractCapability {
-	protected noPositionedNode = true
 
+export class DocumentSymbolElement extends Element {
 	protected alreadyParsedPrototypes: AbstractNode[] = []
 
-	protected run(context: CapabilityContext<AbstractNode>) {
-		const { parsedFile } = <ParsedFileCapabilityContext<AbstractNode>>context
-		const symbols = this.getSymbolsFromParsedFile(parsedFile)
+	public async documentSymbolCapability(context: CapabilityContext<AbstractNode>, params: DocumentSymbolParams): Promise<DocumentSymbol[] | undefined> {
+		const parsedFile = context.parsedFusionFile
+		if (!parsedFile) return undefined
 
-		this.alreadyParsedPrototypes = []
-
-		return symbols
-	}
-
-	protected getSymbolsFromParsedFile(parsedFile: ParsedFusionFile): DocumentSymbol[] {
-		return [
+		const symbols = [
 			...this.getSymbolsFromPrototypeCreations(parsedFile),
 			...this.getSymbolsFromPrototypeOverwrites(parsedFile),
 			...this.getSymbolsFromObjectStatements(parsedFile)
 		]
+
+		this.alreadyParsedPrototypes = []
+
+		return symbols
 	}
 
 	protected * getSymbolsFromPrototypeCreations(parsedFile: ParsedFusionFile) {
@@ -213,5 +210,4 @@ export class DocumentSymbolCapability extends AbstractCapability {
 		if (value.nodes instanceof LiteralArrayNode) return { detail: '${Array}', kind: SymbolKind.Array }
 		return { detail: '${...}', kind: SymbolKind.Variable }
 	}
-
 }

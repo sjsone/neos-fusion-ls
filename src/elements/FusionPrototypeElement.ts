@@ -4,7 +4,7 @@ import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStateme
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { Hover, HoverParams, Location, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, Location, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
