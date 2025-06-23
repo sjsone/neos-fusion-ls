@@ -6,7 +6,7 @@ import { Logger } from '../common/Logging'
 import { pathToUri } from '../common/util'
 import { YamlLexer } from '../yaml/YamlLexer'
 import { AbstractListYamlNode, AbstractYamlNode, DocumentNode } from '../yaml/YamlNodes'
-import { YamlParser } from '../yaml/YamlParser'
+import { LegacyYamlParser } from '../yaml/LegacyYamlParser'
 import { YamlTokenType } from '../yaml/YamlToken'
 
 export type ParsedYaml = string | null | number | boolean | { [key: string]: ParsedYaml }
@@ -83,7 +83,7 @@ export class FlowConfigurationFile extends Logger {
 	public resolvePositionRangeForPath(path: string[]) {
 		if (this.positionedParsedYaml === undefined) {
 			try {
-				this.positionedParsedYaml = YamlParser.Parse(this.uri)
+				this.positionedParsedYaml = LegacyYamlParser.Parse(this.uri)
 			} catch (error) {
 				this.logVerbose("Error while parsing", this.uri, error)
 				this.positionedParsedYaml = undefined

@@ -13,7 +13,7 @@ const traverseUpwards = (node: AbstractYamlNode, steps: number) => {
     return node
 }
 
-export class YamlParser {
+export class LegacyYamlParser {
     protected tokens: YamlToken[]
 
     protected constructor(tokens: YamlToken[]) {
@@ -23,7 +23,7 @@ export class YamlParser {
     public static Parse(uri: string) {
         const configurationFileYaml = NodeFs.readFileSync(uriToPath(uri)).toString()
         const yamlLexer = new YamlLexer(configurationFileYaml)
-        return (new YamlParser([...yamlLexer.tokenize()])).parse(uri, configurationFileYaml)
+        return (new LegacyYamlParser([...yamlLexer.tokenize()])).parse(uri, configurationFileYaml)
     }
 
     public parse(uri: string, data: string) {
