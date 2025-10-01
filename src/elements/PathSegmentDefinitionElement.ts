@@ -1,10 +1,10 @@
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
-import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
-import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
+import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
+import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
 import { Location } from 'vscode-languageserver/node'
-import { findParent } from '../common/util'
 import { NodeService } from '../common/NodeService'
+import { findParent } from '../common/util'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
 

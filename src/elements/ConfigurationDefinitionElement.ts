@@ -1,4 +1,4 @@
-import { Position, LocationLink, Location } from 'vscode-languageserver/node'
+import { LocationLink, Position } from 'vscode-languageserver/node'
 import { FlowConfigurationPathPartNode } from '../fusion/FlowConfigurationPathPartNode'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'

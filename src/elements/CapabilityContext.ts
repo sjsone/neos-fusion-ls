@@ -1,8 +1,8 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
+import { CodeLensParams, TextDocumentPositionParams } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { FusionWorkspace } from '../fusion/FusionWorkspace';
 import { ParsedFusionFile } from '../fusion/ParsedFusionFile';
-import { TextDocumentPositionParams, CodeLensParams } from 'vscode-languageserver';
 
 export class CapabilityContext<Node extends AbstractNode = AbstractNode> {
 	constructor(

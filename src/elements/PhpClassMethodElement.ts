@@ -1,11 +1,3 @@
-import { HoverParams, Hover, SignatureHelpParams, SignatureHelp, ParameterInformation, InlayHint, InlayHintKind, MarkupKind } from 'vscode-languageserver';
-import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode';
-import { CapabilityContext } from './CapabilityContext';
-import { Element } from './Element';
-import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectFunctionPathNode';
-import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode';
-import { FusionFileProcessor } from '../fusion/FusionFileProcessor';
-import { LanguageFeatureContext } from './LanguageFeatureContext';
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
 import { AbstractLiteralNode } from 'ts-fusion-parser/out/dsl/eel/nodes/AbstractLiteralNode';
 import { LiteralArrayNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralArrayNode';
@@ -14,9 +6,17 @@ import { LiteralNumberNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralNum
 import { LiteralObjectEntryNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralObjectEntryNode';
 import { LiteralObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralObjectNode';
 import { LiteralStringNode } from 'ts-fusion-parser/out/dsl/eel/nodes/LiteralStringNode';
+import { ObjectFunctionPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectFunctionPathNode';
+import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode';
+import { Hover, HoverParams, InlayHint, InlayHintKind, MarkupKind, ParameterInformation, SignatureHelp, SignatureHelpParams } from 'vscode-languageserver';
 import { PhpClassMethod } from '../common/php/PhpClassMethod';
 import { InlayHintDepth } from '../ExtensionConfiguration';
+import { FusionFileProcessor } from '../fusion/FusionFileProcessor';
 import { FusionWorkspace } from '../fusion/FusionWorkspace';
+import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode';
+import { CapabilityContext } from './CapabilityContext';
+import { Element } from './Element';
+import { LanguageFeatureContext } from './LanguageFeatureContext';
 
 export class PhpClassMethodElement extends Element<PhpClassMethodNode | ObjectFunctionPathNode> {
 	public async hoverCapability(context: CapabilityContext<PhpClassMethodNode>, params: HoverParams): Promise<string | Hover | undefined> {

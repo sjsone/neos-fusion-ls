@@ -1,5 +1,5 @@
-import { FqcnNode } from '../fusion/node/FqcnNode'
 import { LocationLink } from 'vscode-languageserver'
+import { FqcnNode } from '../fusion/node/FqcnNode'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
 

@@ -2,14 +2,14 @@ import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
 import { TagAttributeNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagAttributeNode'
 import { TagNode } from 'ts-fusion-parser/out/dsl/afx/nodes/TagNode'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
-import { LocationLink, Location } from 'vscode-languageserver/node'
-import { ActionUriService, ActionUriPartTypes } from '../common/ActionUriService'
+import { LocationLink } from 'vscode-languageserver/node'
+import { ActionUriPartTypes, ActionUriService } from '../common/ActionUriService'
 import { NodeService } from '../common/NodeService'
 import { findParent } from '../common/util'
-import { CapabilityContext } from './CapabilityContext'
-import { Element } from './Element'
 import { NeosFusionFormActionNode } from '../fusion/node/NeosFusionFormActionNode'
 import { NeosFusionFormControllerNode } from '../fusion/node/NeosFusionFormControllerNode'
+import { CapabilityContext } from './CapabilityContext'
+import { Element } from './Element'
 
 export class TagAttributeDefinitionElement extends Element<TagAttributeNode> {
 	public async definitionCapability(context: CapabilityContext<TagAttributeNode>): Promise<LocationLink[] | undefined> {

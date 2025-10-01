@@ -1,6 +1,6 @@
 import { Location } from 'vscode-languageserver/node'
-import { PhpClassNode } from '../fusion/node/PhpClassNode'
 import { PhpClassMethodNode } from '../fusion/node/PhpClassMethodNode'
+import { PhpClassNode } from '../fusion/node/PhpClassNode'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
 

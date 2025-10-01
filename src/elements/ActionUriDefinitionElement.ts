@@ -1,11 +1,11 @@
-import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
+import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
 import { LocationLink } from 'vscode-languageserver'
-import { ActionUriService, ActionUriPartTypes } from '../common/ActionUriService'
-import { CapabilityContext } from './CapabilityContext'
-import { Element } from './Element'
+import { ActionUriPartTypes, ActionUriService } from '../common/ActionUriService'
 import { ActionUriActionNode } from '../fusion/node/ActionUriActionNode'
 import { ActionUriControllerNode } from '../fusion/node/ActionUriControllerNode'
+import { CapabilityContext } from './CapabilityContext'
+import { Element } from './Element'
 
 export class ActionUriDefinitionElement extends Element<ObjectStatement> {
 	public async definitionCapability(context: CapabilityContext<ObjectStatement>): Promise<LocationLink[] | undefined> {

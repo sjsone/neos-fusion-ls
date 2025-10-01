@@ -1,5 +1,5 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { CodeLens, CodeLensParams, CompletionItem, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, LocationLink, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { CodeLens, CodeLensParams, CompletionItem, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, LocationLink, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { Logger } from '../common/Logging';
 import { CapabilityContext } from './CapabilityContext';
 import { LanguageFeatureContext } from './LanguageFeatureContext';

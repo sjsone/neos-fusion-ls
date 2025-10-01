@@ -1,4 +1,4 @@
-import { HoverParams, Hover } from 'vscode-languageserver';
+import { Hover, HoverParams } from 'vscode-languageserver';
 import { PhpClassNode } from '../fusion/node/PhpClassNode';
 import { CapabilityContext } from './CapabilityContext';
 import { Element } from './Element';

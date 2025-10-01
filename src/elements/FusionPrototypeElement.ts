@@ -1,17 +1,16 @@
 import * as NodePath from 'path';
+import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
 import { FusionObjectValue } from 'ts-fusion-parser/out/fusion/nodes/FusionObjectValue';
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement';
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, Location, LocationLink, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { Hover, HoverParams, Location, LocationLink, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
 import { Element } from './Element';
-import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
 
-// FusionObjectValue
 // FusionObjectValue
 
 export class FusionPrototypeElement extends Element<PrototypePathSegment | FusionObjectValue> {

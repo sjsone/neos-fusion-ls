@@ -1,6 +1,6 @@
-import { Location, LocationLink } from 'vscode-languageserver/node'
-import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
+import { Location } from 'vscode-languageserver/node'
 import { RoutingActionNode } from '../fusion/node/RoutingActionNode'
+import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
 

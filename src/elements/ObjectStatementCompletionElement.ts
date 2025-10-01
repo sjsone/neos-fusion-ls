@@ -1,6 +1,6 @@
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
 import { CompletionItem, CompletionItemKind } from 'vscode-languageserver/node'
-import { NodeService, ExternalObjectStatement } from '../common/NodeService'
+import { ExternalObjectStatement, NodeService } from '../common/NodeService'
 import { RoutingControllerNode } from '../fusion/node/RoutingControllerNode'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
