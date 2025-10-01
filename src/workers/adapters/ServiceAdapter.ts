@@ -1,7 +1,6 @@
-import { WorkerPoolManager } from '../WorkerPoolManager'
-import { WorkerTaskResult } from '../WorkerTypes'
-import { BaseWorkerTask } from '../WorkerTask'
 import { Logger } from '../../common/Logging'
+import { WorkerPoolManager } from '../WorkerPoolManager'
+import { BaseWorkerTask } from '../WorkerTask'
 
 export interface ServiceAdapterConfig {
 	workerType: string
@@ -54,7 +53,7 @@ export abstract class ServiceAdapter<TInput = any, TOutput = any> extends Logger
 		try {
 			return await this.processWithWorker(input, timeout, priority)
 		} catch (error) {
-			this.logWarn(`Worker processing failed for ${this.config.workerType}:`, error)
+			this.logInfo(`Worker processing failed for ${this.config.workerType}:`, error)
 
 			// Try fallback if enabled
 			if (this.config.enableFallback) {
@@ -84,7 +83,7 @@ export abstract class ServiceAdapter<TInput = any, TOutput = any> extends Logger
 		try {
 			return await this.processBatchWithWorkers(inputs, options)
 		} catch (error) {
-			this.logWarn(`Batch worker processing failed for ${this.config.workerType}:`, error)
+			this.logInfo(`Batch worker processing failed for ${this.config.workerType}:`, error)
 
 			if (this.config.enableFallback) {
 				this.logInfo(`Falling back to sequential batch processing for ${this.config.workerType}`)
@@ -251,7 +250,7 @@ export abstract class ServiceAdapter<TInput = any, TOutput = any> extends Logger
 
 		if (!workerPoolAvailable) {
 			return {
-				healthy: this.config.enableFallback,
+				healthy: this.config.enableFallback ?? false,
 				workerPoolAvailable: false
 			}
 		}
@@ -268,7 +267,7 @@ export abstract class ServiceAdapter<TInput = any, TOutput = any> extends Logger
 			}
 		} catch (error) {
 			return {
-				healthy: this.config.enableFallback,
+				healthy: this.config.enableFallback ?? false,
 				workerPoolAvailable: true,
 				lastTestResult: 'failed',
 				error: error instanceof Error ? error.message : String(error)

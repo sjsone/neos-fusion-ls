@@ -1,9 +1,9 @@
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads'
 import { EventEmitter } from 'events'
-import { WorkerTask, WorkerTaskResult, WorkerProgress, WorkerStats, WorkerStatus } from './WorkerTypes'
-import { BaseWorkerTask } from './WorkerTask'
-import { MessageFactory, MessageValidator } from './WorkerMessage'
+import { Worker, isMainThread, parentPort, workerData } from 'worker_threads'
 import { Logger } from '../common/Logging'
+import { MessageFactory, MessageValidator } from './WorkerMessage'
+import { BaseWorkerTask } from './WorkerTask'
+import { WorkerProgress, WorkerStats, WorkerStatus, WorkerTaskResult } from './WorkerTypes'
 
 export interface BaseWorkerData {
 	workerId: string
@@ -146,7 +146,7 @@ export abstract class BaseWorker<TTask extends BaseWorkerTask = BaseWorkerTask> 
 	// Message handling (main thread)
 	protected handleMessageFromWorker(message: any): void {
 		if (!MessageValidator.isValidMessage(message)) {
-			this.logWarn('Received invalid message from worker:', message)
+			this.logInfo('Received invalid message from worker:', message)
 			return
 		}
 
@@ -164,14 +164,14 @@ export abstract class BaseWorker<TTask extends BaseWorkerTask = BaseWorkerTask> 
 				this.handleTaskProgress(message.data)
 				break
 			default:
-				this.logWarn(`Unknown message type: ${message.type}`)
+				this.logInfo(`Unknown message type: ${message.type}`)
 		}
 	}
 
 	// Message handling (worker thread)
 	protected handleMessageFromMain(message: any): void {
 		if (!MessageValidator.isValidTaskMessage(message)) {
-			this.logWarn('Received invalid task message from main:', message)
+			this.logInfo('Received invalid task message from main:', message)
 			return
 		}
 
@@ -293,7 +293,7 @@ export abstract class BaseWorker<TTask extends BaseWorkerTask = BaseWorkerTask> 
 
 			// Wait for graceful shutdown or force terminate
 			setTimeout(() => {
-				if (this.worker && !this.worker.exited) {
+				if (this.worker) {
 					this.worker.terminate()
 				}
 			}, 5000)

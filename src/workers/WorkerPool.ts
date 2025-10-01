@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events'
-import { BaseWorker, BaseWorkerData } from './BaseWorker'
-import { BaseWorkerTask } from './WorkerTask'
-import { WorkerTask, WorkerTaskResult, WorkerStats, WorkerStatus, WorkerPoolConfig } from './WorkerTypes'
 import { Logger } from '../common/Logging'
+import { BaseWorker } from './BaseWorker'
+import { BaseWorkerTask } from './WorkerTask'
+import { WorkerPoolConfig, WorkerStats, WorkerTaskResult } from './WorkerTypes'
 
 export interface WorkerPoolOptions {
 	type: string
@@ -204,7 +204,7 @@ export class WorkerPool extends Logger {
 	}
 
 	protected handleWorkerExit(worker: BaseWorker, code: number): void {
-		this.logWarn(`Worker ${worker.getWorkerId()} exited with code ${code}`)
+		this.logInfo(`Worker ${worker.getWorkerId()} exited with code ${code}`)
 		this.eventEmitter.emit('worker-exit', { workerId: worker.getWorkerId(), code })
 
 		if (code !== 0 && !this.isShuttingDown) {

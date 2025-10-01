@@ -270,7 +270,7 @@ export class WorkerMonitor extends Logger {
 		}
 
 		this.alerts.push(alert)
-		this.logWarn(`[ALERT] ${message}`)
+		this.logInfo(`[ALERT] ${message}`)
 		this.eventEmitter.emit('alert', alert)
 
 		// Limit alerts history

@@ -40,7 +40,7 @@ export class WorkerPoolManager extends Logger {
 
 	public async initialize(): Promise<void> {
 		if (this.isInitialized) {
-			this.logWarn('WorkerPoolManager is already initialized')
+			this.logInfo('WorkerPoolManager is already initialized')
 			return
 		}
 
@@ -205,10 +205,10 @@ export class WorkerPoolManager extends Logger {
 			const unhealthyPools: string[] = []
 
 			// Check each pool for health issues
-			for (const [poolType, poolStats] of Object.entries(stats.pools as any)) {
+			for (const [poolType, poolStats] of Object.entries(stats.pools as { [key: string]: any })) {
 				if (poolStats.pool.totalWorkers === 0) {
 					unhealthyPools.push(poolType)
-					this.logWarn(`Pool ${poolType} has no workers`)
+					this.logInfo(`Pool ${poolType} has no workers`)
 				}
 
 				// Check for high error rates
@@ -221,12 +221,12 @@ export class WorkerPoolManager extends Logger {
 
 				if (totalTasks > 10 && failedTasks / totalTasks > 0.5) {
 					unhealthyPools.push(poolType)
-					this.logWarn(`Pool ${poolType} has high error rate: ${failedTasks}/${totalTasks}`)
+					this.logInfo(`Pool ${poolType} has high error rate: ${failedTasks}/${totalTasks}`)
 				}
 
 				// Check for long queues
 				if (poolStats.pool.queueLength > 50) {
-					this.logWarn(`Pool ${poolType} has long queue: ${poolStats.pool.queueLength} tasks`)
+					this.logInfo(`Pool ${poolType} has long queue: ${poolStats.pool.queueLength} tasks`)
 				}
 			}
 
@@ -245,9 +245,7 @@ export class WorkerPoolManager extends Logger {
 			this.logInfo(`Attempting to recover unhealthy pool: ${poolType}`)
 
 			// Try to restart the pool
-			this.registry.unregisterWorkerType(poolType).catch(error => {
-				this.logError(`Failed to unregister pool ${poolType}:`, error)
-			})
+			this.registry.unregisterWorkerType(poolType)
 		}
 	}
 

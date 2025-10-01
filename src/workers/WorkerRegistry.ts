@@ -46,7 +46,7 @@ export class WorkerRegistry extends Logger {
 		this.logInfo(`Registering worker type: ${type}`)
 
 		if (this.registeredTypes.has(type)) {
-			this.logWarn(`Worker type ${type} is already registered. Overwriting...`)
+			this.logInfo(`Worker type ${type} is already registered. Overwriting...`)
 		}
 
 		this.registeredTypes.set(type, {
@@ -63,7 +63,7 @@ export class WorkerRegistry extends Logger {
 
 		const registered = this.registeredTypes.get(type)
 		if (!registered) {
-			this.logWarn(`Worker type ${type} is not registered`)
+			this.logInfo(`Worker type ${type} is not registered`)
 			return false
 		}
 

@@ -1,10 +1,10 @@
-import { BaseWorker, BaseWorkerData } from './BaseWorker'
-import { ParseXliffTask, ParseXliffTaskData, ParseXliffTaskResult } from './tasks/ParseXliffTask'
-import { BatchParseTranslationsTask, BatchParseTranslationsTaskData, BatchParseTranslationsTaskResult } from './tasks/BatchParseTranslationsTask'
-import { BaseWorkerTask } from './WorkerTask'
-import * as NodePath from 'path'
 import { XMLParser } from 'fast-xml-parser'
 import * as NodeFsPromises from 'fs/promises'
+import * as NodePath from 'path'
+import { BaseWorker, BaseWorkerData } from './BaseWorker'
+import { BatchParseTranslationsTask, BatchParseTranslationsTaskData, BatchParseTranslationsTaskResult } from './tasks/BatchParseTranslationsTask'
+import { ParseXliffTask, ParseXliffTaskData, ParseXliffTaskResult } from './tasks/ParseXliffTask'
+import { BaseWorkerTask } from './WorkerTask'
 
 interface XLIFFTransUnit {
 	source: string
@@ -165,7 +165,7 @@ export class TranslationWorker extends BaseWorker {
 
 			transUnits.push({
 				id: transUnit["@_id"],
-				source: this.extractTextFromSourceOrTarget(transUnit.source),
+				source: this.extractTextFromSourceOrTarget(transUnit.source)!,
 				target: this.extractTextFromSourceOrTarget(transUnit.target),
 				position,
 				language,
