@@ -1,4 +1,4 @@
-import { CodeLens, CodeLensParams, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
+import { CodeLens, CodeLensParams, CompletionItem, CompletionList, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, LocationLink, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, ResponseError, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, TextDocumentPositionParams, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver'
 import { type LanguageServer } from './LanguageServer'
 import { Logger } from './common/Logging'
 import { CapabilityContext } from './elements/CapabilityContext'
@@ -36,7 +36,7 @@ export class ElementRunner extends Logger {
 		const parsedFusionFile = workspace.getParsedFileByUri(uri)
 		const foundNodeByLine = this.buildContextNodeByLine(params, parsedFusionFile)
 
-		return new CapabilityContext(workspaces, parsedFusionFile, foundNodeByLine)
+		return new CapabilityContext(workspaces, parsedFusionFile, foundNodeByLine, params)
 	}
 
 	protected buildLanguageFeatureContext(params: InlayHintParams): LanguageFeatureContext | undefined {
@@ -282,5 +282,70 @@ export class ElementRunner extends Logger {
 
 		if (inlayHints.length === 0) return undefined
 		return inlayHints
+	}
+
+	public async completionCapability(params: TextDocumentPositionParams): Promise<CompletionList | ResponseError<void> | undefined> {
+		const context = this.buildCapabilityContext(params)
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
+
+		const completions: CompletionItem[] = []
+		for (const element of this.elements) {
+			try {
+				const elementCompletions = await element.completionCapability(context)
+				if (elementCompletions === undefined) continue
+
+				completions.push(...elementCompletions)
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		if (completions.length === 0) {
+			return undefined
+		}
+
+		return {
+			items: completions,
+			isIncomplete: false
+		}
+	}
+
+	public async definitionCapability(params: TextDocumentPositionParams): Promise<Location[] | LocationLink[] | ResponseError<void> | undefined> {
+		const context = this.buildCapabilityContext(params)
+		if (context === undefined) return undefined
+		if (context.foundNodeByLine === undefined) return undefined
+
+		const locations: Location[] = []
+		const locationLinks: LocationLink[] = []
+
+		for (const element of this.elements) {
+			try {
+				const elementDefinitions = await element.definitionCapability(context)
+				if (elementDefinitions === undefined) continue
+
+				if (Array.isArray(elementDefinitions)) {
+					// Check if the first element has the 'targetUri' property to distinguish LocationLink from Location
+					if (elementDefinitions.length > 0 && 'targetUri' in elementDefinitions[0]) {
+						locationLinks.push(...elementDefinitions as LocationLink[])
+					} else {
+						locations.push(...elementDefinitions as Location[])
+					}
+				}
+			} catch (error) {
+				this.logError(error)
+			}
+		}
+
+		// Return locationLinks if we have any, otherwise return locations
+		if (locationLinks.length > 0) {
+			return locationLinks
+		}
+
+		if (locations.length > 0) {
+			return locations
+		}
+
+		return undefined
 	}
 }

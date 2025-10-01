@@ -4,8 +4,6 @@ import {
     TextDocuments,
     createConnection
 } from "vscode-languageserver/node"
-import { CompletionCapability } from './capabilities/CompletionCapability'
-import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { resolveClient } from './ClientBuilding'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { LanguageServer } from './LanguageServer'
@@ -28,9 +26,9 @@ documents.onDidOpen(event => languageserver.onDidOpen(event))
 documents.onDidChangeContent(change => languageserver.onDidChangeContent(change))
 connection.onDidChangeWatchedFiles(params => { languageserver.onDidChangeWatchedFiles(params) })
 
-connection.onDefinition(params => languageserver.runCapability(DefinitionCapability, params))
+connection.onDefinition(params => languageserver.elementRunner.definitionCapability(params))
 connection.onReferences(params => languageserver.elementRunner.referenceCapability(params))
-connection.onCompletion(params => languageserver.runCapability(CompletionCapability, params))
+connection.onCompletion(params => languageserver.elementRunner.completionCapability(params))
 connection.onCompletionResolve(item => item)
 connection.onHover(params => languageserver.elementRunner.hoverCapability(params))
 connection.onDocumentSymbol(params => languageserver.elementRunner.documentSymbolCapability(params))

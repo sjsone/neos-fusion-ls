@@ -15,10 +15,13 @@ import { IntValue } from 'ts-fusion-parser/out/fusion/nodes/IntValue';
 import { MetaPathSegment } from 'ts-fusion-parser/out/fusion/nodes/MetaPathSegment';
 import { NullValue } from 'ts-fusion-parser/out/fusion/nodes/NullValue';
 import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement';
+import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment';
+import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { StatementList } from 'ts-fusion-parser/out/fusion/nodes/StatementList';
 import { StringValue } from 'ts-fusion-parser/out/fusion/nodes/StringValue';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
+import { ValueCopy } from 'ts-fusion-parser/out/fusion/nodes/ValueCopy';
 import { ValueUnset } from 'ts-fusion-parser/out/fusion/nodes/ValueUnset';
 import { DocumentSymbol, DocumentSymbolParams, SymbolKind } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
@@ -177,6 +180,32 @@ export class DocumentSymbolElement extends Element {
 
 		if (node instanceof ObjectStatement) {
 			return this.createDocumentSymbolFromPositionedObjectStatement(node)
+		}
+
+		if (node instanceof PropertyDocumentationDefinition) {
+			// Documentation nodes don't need symbols, they're just metadata
+			return null
+		}
+
+		if (node instanceof PathSegment) {
+			// Path segments are handled by their parent nodes
+			return null
+		}
+
+		if (node instanceof ValueCopy) {
+			// Value copies are handled by their parent ObjectStatement
+			return null
+		}
+
+		if (node instanceof ValueAssignment) {
+			// Value assignments are handled by their parent ObjectStatement
+			return null
+		}
+
+		// Primitive value nodes don't need individual symbols
+		if (node instanceof StringValue || node instanceof IntValue || node instanceof FloatValue ||
+			node instanceof BoolValue || node instanceof NullValue || node instanceof CharValue) {
+			return null
 		}
 
 		this.logDebug(`Could not create symbol for: ${node.constructor.name}`)

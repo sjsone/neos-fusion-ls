@@ -4,7 +4,7 @@ import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStateme
 import { PropertyDocumentationDefinition } from 'ts-fusion-parser/out/fusion/nodes/PropertyDocumentationDefinition';
 import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/PrototypePathSegment';
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment';
-import { DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, Location, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, Location, LocationLink, SymbolInformation, SymbolKind, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { LinePositionedNode } from '../common/LinePositionedNode';
 import { abstractNodeToString, findParent, getPrototypeNameFromNode } from '../common/util';
 import { CapabilityContext } from './CapabilityContext';
@@ -21,6 +21,8 @@ export class FusionPrototypeElement extends Element<PrototypePathSegment | Fusio
 
 		const prototypeName = getPrototypeNameFromNode(node)
 		if (prototypeName === null) return undefined
+
+		this.logInfo(`Found PrototypePathSegment ${prototypeName}`)
 
 		const workspace = context.workspaces[0]!
 
@@ -99,6 +101,39 @@ export class FusionPrototypeElement extends Element<PrototypePathSegment | Fusio
 				yield `/// ${statement.type} ${statement.text}`
 			}
 		}
+	}
+
+	public async definitionCapability(context: CapabilityContext<PrototypePathSegment | FusionObjectValue>): Promise<LocationLink[] | undefined> {
+		const node = context.foundNodeByLine!.getNode()
+		if (!(node instanceof PrototypePathSegment) && !(node instanceof FusionObjectValue)) return undefined
+
+		const prototypeName = getPrototypeNameFromNode(node)
+		if (!prototypeName) return undefined
+
+		this.logDebug(`Looking for prototype definition: "${prototypeName}"`)
+
+		const workspace = context.workspaces[0]!
+		const locationLinks: LocationLink[] = []
+
+		for (const otherParsedFile of workspace.parsedFiles) {
+			for (const otherNode of [...otherParsedFile.prototypeCreations, ...otherParsedFile.prototypeOverwrites]) {
+				if (getPrototypeNameFromNode(otherNode.getNode()) !== prototypeName) continue
+				locationLinks.push({
+					targetUri: otherParsedFile.uri,
+					targetRange: otherNode.getPositionAsRange(),
+					targetSelectionRange: otherNode.getPositionAsRange(),
+					originSelectionRange: node.linePositionedNode.getPositionAsRange()
+				})
+			}
+		}
+
+		if (locationLinks.length === 0) {
+			this.logDebug(`No prototype definitions found for "${prototypeName}"`)
+			return undefined
+		}
+
+		this.logDebug(`Found ${locationLinks.length} prototype definitions for "${prototypeName}"`)
+		return locationLinks
 	}
 
 	public async workspaceSymbolCapability(context: CapabilityContext<AbstractNode>, params: WorkspaceSymbolParams): Promise<SymbolInformation[] | WorkspaceSymbol[] | undefined> {

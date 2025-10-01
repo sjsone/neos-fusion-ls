@@ -17,9 +17,6 @@ import { addFusionNoAutoincludeNeededSemanticCommentAction } from './actions/Add
 import { createNodeTypeFileAction } from './actions/CreateNodeTypeFileAction'
 import { openDocumentationAction } from './actions/OpenDocumentationAction'
 import { replaceDeprecatedQuickFixAction } from './actions/ReplaceDeprecatedQuickFixAction'
-import { AbstractCapability } from './capabilities/AbstractCapability'
-import { CompletionCapability } from './capabilities/CompletionCapability'
-import { DefinitionCapability } from './capabilities/DefinitionCapability'
 import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
@@ -35,6 +32,18 @@ import { PhpClassElement } from './elements/PhpClassElement'
 import { PhpClassMethodElement } from './elements/PhpClassMethodElement'
 import { ResourceUriElement } from './elements/ResourceUriElement'
 import { TranslationElement } from './elements/TranslationElement'
+import { ConfigurationDefinitionElement } from './elements/ConfigurationDefinitionElement'
+import { PathSegmentDefinitionElement } from './elements/PathSegmentDefinitionElement'
+import { EelHelperDefinitionElement } from './elements/EelHelperDefinitionElement'
+import { FqcnDefinitionElement } from './elements/FqcnDefinitionElement'
+import { ActionUriDefinitionElement } from './elements/ActionUriDefinitionElement'
+import { TagAttributeDefinitionElement } from './elements/TagAttributeDefinitionElement'
+import { RoutingDefinitionElement } from './elements/RoutingDefinitionElement'
+import { TagCompletionElement } from './elements/TagCompletionElement'
+import { TagAttributeCompletionElement } from './elements/TagAttributeCompletionElement'
+import { ObjectStatementCompletionElement } from './elements/ObjectStatementCompletionElement'
+import { PrototypeCompletionElement } from './elements/PrototypeCompletionElement'
+import { EelHelperCompletionElement } from './elements/EelHelperCompletionElement'
 import { AbstractFileChangeHandler } from './fileChangeHandler/AbstractFileChangeHandler'
 import { FusionFileChangeHandler } from './fileChangeHandler/FusionFileChangeHandler'
 import { PhpFileChangeHandler } from './fileChangeHandler/PhpFileChangeHandler'
@@ -96,8 +105,21 @@ export class LanguageServer extends Logger {
 		this.elementRunner.addElement(new NodeTypeElement)
 		this.elementRunner.addElement(new DocumentSymbolElement)
 
-		this.addFunctionalityInstance(DefinitionCapability)
-		this.addFunctionalityInstance(CompletionCapability)
+		// Definition elements
+		this.elementRunner.addElement(new ConfigurationDefinitionElement)
+		this.elementRunner.addElement(new PathSegmentDefinitionElement)
+		this.elementRunner.addElement(new EelHelperDefinitionElement)
+		this.elementRunner.addElement(new FqcnDefinitionElement)
+		this.elementRunner.addElement(new ActionUriDefinitionElement)
+		this.elementRunner.addElement(new TagAttributeDefinitionElement)
+		this.elementRunner.addElement(new RoutingDefinitionElement)
+
+		// Completion elements
+		this.elementRunner.addElement(new TagCompletionElement)
+		this.elementRunner.addElement(new TagAttributeCompletionElement)
+		this.elementRunner.addElement(new ObjectStatementCompletionElement)
+		this.elementRunner.addElement(new PrototypeCompletionElement)
+		this.elementRunner.addElement(new EelHelperCompletionElement)
 		// this.addFunctionalityInstance(HoverCapability)
 		// this.addFunctionalityInstance(ReferenceCapability)
 		// this.addFunctionalityInstance(DocumentSymbolCapability)
@@ -124,11 +146,7 @@ export class LanguageServer extends Logger {
 		return <T | undefined>this.functionalityInstances.get(type)
 	}
 
-	public runCapability<T extends AbstractCapability>(type: new (...args: any[]) => T, params: any) {
-		const capability = this.getFunctionalityInstance<T>(type)
-		return capability ? capability.execute(params) : undefined
-	}
-
+	
 	public runLanguageFeature<TT extends AbstractLanguageFeatureParams, T extends AbstractLanguageFeature<TT>>(type: new (...args: any[]) => T, params: any) {
 		const languageFeature = this.getFunctionalityInstance<T>(type)
 		return languageFeature ? languageFeature.execute(params) : undefined

@@ -5,8 +5,7 @@ import { PrototypePathSegment } from 'ts-fusion-parser/out/fusion/nodes/Prototyp
 import { StringValue } from 'ts-fusion-parser/out/fusion/nodes/StringValue'
 import { ValueAssignment } from 'ts-fusion-parser/out/fusion/nodes/ValueAssignment'
 import { ValueCopy } from 'ts-fusion-parser/out/fusion/nodes/ValueCopy'
-import { Range } from 'vscode-languageserver'
-import { ActionUriDefinition } from '../capabilities/DefinitionCapability'
+import { Range, LocationLink } from 'vscode-languageserver'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { ParsedFusionFile } from '../fusion/ParsedFusionFile'
 import { ActionUriDefinitionNode } from '../fusion/node/ActionUriDefinitionNode'
@@ -15,6 +14,12 @@ import { NeosPackageNamespace } from '../neos/NeosPackageNamespace'
 import { Logger } from './Logging'
 import { NodeService } from './NodeService'
 import { findUntil, getObjectIdentifier } from './util'
+
+interface ActionUriDefinition {
+	package: string | null
+	controller: string | null
+	action: string | null
+}
 
 export enum ActionUriPartTypes {
 	Package = 'package',
@@ -40,12 +45,12 @@ class ActionUriService extends Logger {
 		// actionUriDefinition = this.tryToCompleteActionUriDefinitionPackage(tagAttributeNode, workspace, parsedFile, actionUriDefinition)
 		this.logDebug("Found Action URI Definition: ", actionUriDefinition)
 
-		if (!actionUriDefinition.package || !actionUriDefinition.controller || !actionUriDefinition.action) return null
+		if (!actionUriDefinition.package || !actionUriDefinition.controller || !actionUriDefinition.action) return undefined
 
 		const neosPackage = workspace.neosWorkspace.getPackage(actionUriDefinition.package)
 		if (!neosPackage) {
 			this.logInfo(`  Could not resolve defined Package "${actionUriDefinition.package}"`)
-			return null
+			return undefined
 		}
 
 		const className = actionUriDefinition.controller.replace("/", "\\") + 'Controller'
@@ -56,21 +61,21 @@ class ActionUriService extends Logger {
 			if (definition) return definition
 		}
 
-		return null
+		return undefined
 	}
 
-	public resolveActionUriDefinitionNode(objectStatement: ObjectStatement, actionUriDefinitionNode: ActionUriDefinitionNode, definitionTargetName: ActionUriPartTypes, workspace: FusionWorkspace, parsedFile: ParsedFusionFile) {
+	public resolveActionUriDefinitionNode(objectStatement: ObjectStatement, actionUriDefinitionNode: ActionUriDefinitionNode, definitionTargetName: ActionUriPartTypes, workspace: FusionWorkspace, parsedFile: ParsedFusionFile): LocationLink[] | undefined {
 		let actionUriDefinition = this.buildBaseActionUriDefinitionFromActionUriDefinitionNode(actionUriDefinitionNode)
 		actionUriDefinition = this.tryToCompleteActionUriDefinitionPackage(objectStatement, workspace, parsedFile, actionUriDefinition)
 
 		this.logDebug("Found Action URI Definition: ", actionUriDefinition)
 
-		if (!actionUriDefinition.package || !actionUriDefinition.controller || !actionUriDefinition.action) return null
+		if (!actionUriDefinition.package || !actionUriDefinition.controller || !actionUriDefinition.action) return undefined
 
 		const neosPackage = workspace.neosWorkspace.getPackage(actionUriDefinition.package)
 		if (!neosPackage) {
 			this.logDebug(`  Could not resolve defined Package "${actionUriDefinition.package}"`)
-			return null
+			return undefined
 		}
 
 		const className = actionUriDefinition.controller.replace("/", "\\") + 'Controller'
@@ -81,7 +86,7 @@ class ActionUriService extends Logger {
 			if (definition) return definition
 		}
 
-		return null
+		return undefined
 	}
 
 	protected searchInNamespaceForControllerActionDefinition(originSelectionRange: Range, definitionTargetName: ActionUriPartTypes, namespace: NeosPackageNamespace, className: string, actionName: string) {
@@ -121,11 +126,11 @@ class ActionUriService extends Logger {
 		return undefined
 	}
 
-	protected buildBaseActionUriDefinitionFromActionUriDefinitionNode(actionUriDefinitionNode: ActionUriDefinitionNode) {
-		const actionUriDefinition = {
-			package: <string><unknown>null,
-			controller: actionUriDefinitionNode.controller?.name?.value ?? <string><unknown>null,
-			action: actionUriDefinitionNode.action?.name?.value ?? <string><unknown>null
+	protected buildBaseActionUriDefinitionFromActionUriDefinitionNode(actionUriDefinitionNode: ActionUriDefinitionNode): ActionUriDefinition {
+		const actionUriDefinition: ActionUriDefinition = {
+			package: null,
+			controller: actionUriDefinitionNode.controller?.name?.value ?? null,
+			action: actionUriDefinitionNode.action?.name?.value ?? null
 		}
 
 		for (const statement of actionUriDefinitionNode.statement.block!.statementList.statements) {
@@ -140,11 +145,11 @@ class ActionUriService extends Logger {
 		return actionUriDefinition
 	}
 
-	protected buildBaseActionUriDefinitionFromFusionFormDefinitionNode(neosFusionFormDefinitionNode: NeosFusionFormDefinitionNode) {
-		const actionUriDefinition = {
-			package: <string><unknown>null,
-			controller: neosFusionFormDefinitionNode.controller?.tagAttribute ? this.getTagAttributeValue(neosFusionFormDefinitionNode.controller?.tagAttribute) : <string><unknown>null,
-			action: neosFusionFormDefinitionNode.action?.tagAttribute ? this.getTagAttributeValue(neosFusionFormDefinitionNode.action?.tagAttribute) : <string><unknown>null
+	protected buildBaseActionUriDefinitionFromFusionFormDefinitionNode(neosFusionFormDefinitionNode: NeosFusionFormDefinitionNode): ActionUriDefinition {
+		const actionUriDefinition: ActionUriDefinition = {
+			package: null,
+			controller: neosFusionFormDefinitionNode.controller?.tagAttribute ? this.getTagAttributeValue(neosFusionFormDefinitionNode.controller?.tagAttribute) ?? null : null,
+			action: neosFusionFormDefinitionNode.action?.tagAttribute ? this.getTagAttributeValue(neosFusionFormDefinitionNode.action?.tagAttribute) ?? null : null
 		}
 
 		for (const attribute of neosFusionFormDefinitionNode.tag.attributes) {
