@@ -1,16 +1,15 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
-import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
-import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
-import { RuntimeConfiguration } from 'ts-fusion-runtime'
-import { FusionWorkspace } from '../fusion/FusionWorkspace'
-import { MergedArrayTreeService } from './MergedArrayTreeService'
-import { findParent, pathToUri } from './util'
 import { ObjectNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectNode'
 import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNode'
 import { AbstractPathSegment } from 'ts-fusion-parser/out/fusion/nodes/AbstractPathSegment'
-import { IncompletePathSegment } from 'ts-fusion-parser/out/fusion/nodes/IncompletePathSegment'
 import { EelExpressionValue } from 'ts-fusion-parser/out/fusion/nodes/EelExpressionValue'
+import { IncompletePathSegment } from 'ts-fusion-parser/out/fusion/nodes/IncompletePathSegment'
+import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
+import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
+import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { Logger } from './Logging'
+import { MergedArrayTreeService } from './MergedArrayTreeService'
+import { findParent, pathToUri } from './util'
 
 export class ExternalObjectStatement {
 	constructor(

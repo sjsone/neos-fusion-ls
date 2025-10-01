@@ -10,29 +10,40 @@ import {
 	TextDocumentChangeEvent,
 	TextDocumentSyncKind,
 	TextDocuments,
-	_Connection,
-	MessageActionItem
+	_Connection
 } from "vscode-languageserver/node"
-import { type ExtensionConfiguration } from './ExtensionConfiguration'
 import { addFusionIgnoreSemanticCommentAction } from './actions/AddFusionIgnoreSemanticCommentAction'
 import { addFusionNoAutoincludeNeededSemanticCommentAction } from './actions/AddFusionNoAutoincludeNeededSemanticCommentAction'
 import { createNodeTypeFileAction } from './actions/CreateNodeTypeFileAction'
 import { openDocumentationAction } from './actions/OpenDocumentationAction'
 import { replaceDeprecatedQuickFixAction } from './actions/ReplaceDeprecatedQuickFixAction'
-import { AbstractCapability } from './capabilities/AbstractCapability'
-import { CodeLensCapability } from './capabilities/CodeLensCapability'
-import { CompletionCapability } from './capabilities/CompletionCapability'
-import { DefinitionCapability } from './capabilities/DefinitionCapability'
-import { DocumentSymbolCapability } from './capabilities/DocumentSymbolCapability'
-import { HoverCapability } from './capabilities/HoverCapability'
-import { ReferenceCapability } from './capabilities/ReferenceCapability'
-import { RenameCapability } from './capabilities/RenameCapability'
-import { RenamePrepareCapability } from './capabilities/RenamePrepareCapability'
-import { WorkspaceSymbolCapability } from './capabilities/WorkspaceSymbolCapability'
+import { Client } from './client/Client'
 import { AbstractFunctionality } from './common/AbstractFunctionality'
 import { ClientCapabilityService } from './common/ClientCapabilityService'
-import { LogService, Logger } from './common/Logging'
-import { clearLineDataCache, uriToPath } from './common/util'
+import { Logger } from './common/Logging'
+import { uriToPath } from './common/util'
+import { ElementRunner } from './ElementRunner'
+import { EelElement } from './elements/EelElement'
+import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
+import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
+import { FusionPrototypeElement } from './elements/FusionPrototypeElement'
+import { NodeTypeElement } from './elements/NodeTypeElement'
+import { PhpClassElement } from './elements/PhpClassElement'
+import { PhpClassMethodElement } from './elements/PhpClassMethodElement'
+import { ResourceUriElement } from './elements/ResourceUriElement'
+import { TranslationElement } from './elements/TranslationElement'
+import { ConfigurationDefinitionElement } from './elements/ConfigurationDefinitionElement'
+import { PathSegmentDefinitionElement } from './elements/PathSegmentDefinitionElement'
+import { EelHelperDefinitionElement } from './elements/EelHelperDefinitionElement'
+import { FqcnDefinitionElement } from './elements/FqcnDefinitionElement'
+import { ActionUriDefinitionElement } from './elements/ActionUriDefinitionElement'
+import { TagAttributeDefinitionElement } from './elements/TagAttributeDefinitionElement'
+import { RoutingDefinitionElement } from './elements/RoutingDefinitionElement'
+import { TagCompletionElement } from './elements/TagCompletionElement'
+import { TagAttributeCompletionElement } from './elements/TagAttributeCompletionElement'
+import { ObjectStatementCompletionElement } from './elements/ObjectStatementCompletionElement'
+import { PrototypeCompletionElement } from './elements/PrototypeCompletionElement'
+import { EelHelperCompletionElement } from './elements/EelHelperCompletionElement'
 import { AbstractFileChangeHandler } from './fileChangeHandler/AbstractFileChangeHandler'
 import { FusionFileChangeHandler } from './fileChangeHandler/FusionFileChangeHandler'
 import { PhpFileChangeHandler } from './fileChangeHandler/PhpFileChangeHandler'
@@ -40,13 +51,11 @@ import { XlfFileChangeHandler } from './fileChangeHandler/XlfFileChangeHandler'
 import { YamlFileChangeHandler } from './fileChangeHandler/YamlFileChangeHandler'
 import { FusionWorkspace } from './fusion/FusionWorkspace'
 import { AbstractLanguageFeature } from './languageFeatures/AbstractLanguageFeature'
-import { InlayHintLanguageFeature } from './languageFeatures/InlayHintLanguageFeature'
+import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatureContext'
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
-import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatureContext'
-import { SignatureHelpCapability } from './capabilities/SignatureHelpCapability'
-import { Client } from './client/Client'
+import { DocumentSymbolElement } from './elements/DocumentSymbolElement'
 
 
 const CodeActions = [
@@ -72,6 +81,8 @@ export class LanguageServer extends Logger {
 	protected functionalityInstances: Map<new (...args: any[]) => AbstractFunctionality, AbstractFunctionality> = new Map()
 	protected fileChangeHandlerInstances: Map<new (...args: any[]) => AbstractFileChangeHandler, AbstractFileChangeHandler> = new Map()
 
+	public readonly elementRunner: ElementRunner
+
 	constructor(protected connection: _Connection, protected documents: TextDocuments<FusionDocument>, public client: Client) {
 		super()
 
@@ -82,18 +93,43 @@ export class LanguageServer extends Logger {
 		this.connection = connection
 		this.documents = documents
 
-		this.addFunctionalityInstance(DefinitionCapability)
-		this.addFunctionalityInstance(CompletionCapability)
-		this.addFunctionalityInstance(HoverCapability)
-		this.addFunctionalityInstance(ReferenceCapability)
-		this.addFunctionalityInstance(DocumentSymbolCapability)
-		this.addFunctionalityInstance(WorkspaceSymbolCapability)
-		this.addFunctionalityInstance(CodeLensCapability)
-		this.addFunctionalityInstance(RenamePrepareCapability)
-		this.addFunctionalityInstance(RenameCapability)
-		this.addFunctionalityInstance(SignatureHelpCapability)
+		this.elementRunner = new ElementRunner(this)
+		this.elementRunner.addElement(new PhpClassElement)
+		this.elementRunner.addElement(new PhpClassMethodElement)
+		this.elementRunner.addElement(new ResourceUriElement)
+		this.elementRunner.addElement(new TranslationElement)
+		this.elementRunner.addElement(new FusionPrototypeElement)
+		this.elementRunner.addElement(new FlowConfigurationElement)
+		this.elementRunner.addElement(new EelElement)
+		this.elementRunner.addElement(new FusionPathSegmentElement)
+		this.elementRunner.addElement(new NodeTypeElement)
+		this.elementRunner.addElement(new DocumentSymbolElement)
 
-		this.addFunctionalityInstance(InlayHintLanguageFeature)
+		// Definition elements
+		this.elementRunner.addElement(new ConfigurationDefinitionElement)
+		this.elementRunner.addElement(new PathSegmentDefinitionElement)
+		this.elementRunner.addElement(new EelHelperDefinitionElement)
+		this.elementRunner.addElement(new FqcnDefinitionElement)
+		this.elementRunner.addElement(new ActionUriDefinitionElement)
+		this.elementRunner.addElement(new TagAttributeDefinitionElement)
+		this.elementRunner.addElement(new RoutingDefinitionElement)
+
+		// Completion elements
+		this.elementRunner.addElement(new TagCompletionElement)
+		this.elementRunner.addElement(new TagAttributeCompletionElement)
+		this.elementRunner.addElement(new ObjectStatementCompletionElement)
+		this.elementRunner.addElement(new PrototypeCompletionElement)
+		this.elementRunner.addElement(new EelHelperCompletionElement)
+		// this.addFunctionalityInstance(HoverCapability)
+		// this.addFunctionalityInstance(ReferenceCapability)
+		// this.addFunctionalityInstance(DocumentSymbolCapability)
+		// this.addFunctionalityInstance(WorkspaceSymbolCapability)
+		// this.addFunctionalityInstance(CodeLensCapability)
+		// this.addFunctionalityInstance(RenamePrepareCapability)
+		// this.addFunctionalityInstance(RenameCapability)
+		// this.addFunctionalityInstance(SignatureHelpCapability)
+
+		// this.addFunctionalityInstance(InlayHintLanguageFeature)
 		this.addFunctionalityInstance(SemanticTokensLanguageFeature)
 
 		this.addFunctionalityInstance(FusionFileChangeHandler)
@@ -110,11 +146,7 @@ export class LanguageServer extends Logger {
 		return <T | undefined>this.functionalityInstances.get(type)
 	}
 
-	public runCapability<T extends AbstractCapability>(type: new (...args: any[]) => T, params: any) {
-		const capability = this.getFunctionalityInstance<T>(type)
-		return capability ? capability.execute(params) : undefined
-	}
-
+	
 	public runLanguageFeature<TT extends AbstractLanguageFeatureParams, T extends AbstractLanguageFeature<TT>>(type: new (...args: any[]) => T, params: any) {
 		const languageFeature = this.getFunctionalityInstance<T>(type)
 		return languageFeature ? languageFeature.execute(params) : undefined
