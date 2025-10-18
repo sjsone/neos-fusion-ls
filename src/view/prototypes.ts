@@ -61,7 +61,7 @@ export class PrototypesView extends Logger {
 			}
 		}
 
-		this.logInfo(`Found ${Object.keys(allPrototypes).length} total prototypes: ${Object.keys(allPrototypes).join(', ')}`)
+		this.logVerbose(`Found ${Object.keys(allPrototypes).length} total prototypes: ${Object.keys(allPrototypes).join(', ')}`)
 
 		const tree: { [packageName: string]: PrototypesViewTreeEntryNamespace } = {}
 
