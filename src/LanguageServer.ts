@@ -217,7 +217,6 @@ export class LanguageServer extends Logger {
 					return []
 				}
 
-				this.logInfo(`Returning ${JSON.stringify(prototypes).length} characters of prototype data`)
 				return prototypes
 			} catch (error) {
 				this.logError("Error in custom/prototypes/get handler:", error)
