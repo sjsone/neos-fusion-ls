@@ -23,27 +23,28 @@ import { ClientCapabilityService } from './common/ClientCapabilityService'
 import { Logger } from './common/Logging'
 import { uriToPath } from './common/util'
 import { ElementRunner } from './ElementRunner'
+import { ActionUriDefinitionElement } from './elements/ActionUriDefinitionElement'
+import { ConfigurationDefinitionElement } from './elements/ConfigurationDefinitionElement'
+import { DocumentSymbolElement } from './elements/DocumentSymbolElement'
 import { EelElement } from './elements/EelElement'
+import { EelHelperCompletionElement } from './elements/EelHelperCompletionElement'
+import { EelHelperDefinitionElement } from './elements/EelHelperDefinitionElement'
 import { FlowConfigurationElement } from './elements/FlowConfigurationElement'
+import { FqcnDefinitionElement } from './elements/FqcnDefinitionElement'
 import { FusionPathSegmentElement } from './elements/FusionPathSegmentElement'
 import { FusionPrototypeElement } from './elements/FusionPrototypeElement'
 import { NodeTypeElement } from './elements/NodeTypeElement'
+import { ObjectStatementCompletionElement } from './elements/ObjectStatementCompletionElement'
+import { PathSegmentDefinitionElement } from './elements/PathSegmentDefinitionElement'
 import { PhpClassElement } from './elements/PhpClassElement'
 import { PhpClassMethodElement } from './elements/PhpClassMethodElement'
-import { ResourceUriElement } from './elements/ResourceUriElement'
-import { TranslationElement } from './elements/TranslationElement'
-import { ConfigurationDefinitionElement } from './elements/ConfigurationDefinitionElement'
-import { PathSegmentDefinitionElement } from './elements/PathSegmentDefinitionElement'
-import { EelHelperDefinitionElement } from './elements/EelHelperDefinitionElement'
-import { FqcnDefinitionElement } from './elements/FqcnDefinitionElement'
-import { ActionUriDefinitionElement } from './elements/ActionUriDefinitionElement'
-import { TagAttributeDefinitionElement } from './elements/TagAttributeDefinitionElement'
-import { RoutingDefinitionElement } from './elements/RoutingDefinitionElement'
-import { TagCompletionElement } from './elements/TagCompletionElement'
-import { TagAttributeCompletionElement } from './elements/TagAttributeCompletionElement'
-import { ObjectStatementCompletionElement } from './elements/ObjectStatementCompletionElement'
 import { PrototypeCompletionElement } from './elements/PrototypeCompletionElement'
-import { EelHelperCompletionElement } from './elements/EelHelperCompletionElement'
+import { ResourceUriElement } from './elements/ResourceUriElement'
+import { RoutingDefinitionElement } from './elements/RoutingDefinitionElement'
+import { TagAttributeCompletionElement } from './elements/TagAttributeCompletionElement'
+import { TagAttributeDefinitionElement } from './elements/TagAttributeDefinitionElement'
+import { TagCompletionElement } from './elements/TagCompletionElement'
+import { TranslationElement } from './elements/TranslationElement'
 import { AbstractFileChangeHandler } from './fileChangeHandler/AbstractFileChangeHandler'
 import { FusionFileChangeHandler } from './fileChangeHandler/FusionFileChangeHandler'
 import { PhpFileChangeHandler } from './fileChangeHandler/PhpFileChangeHandler'
@@ -55,7 +56,7 @@ import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatur
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
-import { DocumentSymbolElement } from './elements/DocumentSymbolElement'
+import { PrototypesView } from './view/prototypes'
 
 
 const CodeActions = [
@@ -146,7 +147,7 @@ export class LanguageServer extends Logger {
 		return <T | undefined>this.functionalityInstances.get(type)
 	}
 
-	
+
 	public runLanguageFeature<TT extends AbstractLanguageFeatureParams, T extends AbstractLanguageFeature<TT>>(type: new (...args: any[]) => T, params: any) {
 		const languageFeature = this.getFunctionalityInstance<T>(type)
 		return languageFeature ? languageFeature.execute(params) : undefined
@@ -200,6 +201,28 @@ export class LanguageServer extends Logger {
 
 			const selectedContext = this.fusionWorkspaces[0].neosWorkspace.configurationManager.getContextPath()
 			return contexts.map(context => ({ context, selected: selectedContext === context }))
+		})
+
+		this.connection.onRequest("custom/prototypes/get", () => {
+			try {
+				this.logInfo("Received custom/prototypes/get request")
+
+
+				this.logInfo(`getAllPrototypes called with ${this.fusionWorkspaces.length} workspaces`)
+
+				const prototypes = (new PrototypesView).getAllPrototypes(this.fusionWorkspaces)
+
+				if (this.fusionWorkspaces.length === 0) {
+					this.logInfo("No fusion workspaces available")
+					return []
+				}
+
+				this.logInfo(`Returning ${JSON.stringify(prototypes).length} characters of prototype data`)
+				return prototypes
+			} catch (error) {
+				this.logError("Error in custom/prototypes/get handler:", error)
+				throw error
+			}
 		})
 
 		this.client.onInitialize(params)
