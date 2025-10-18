@@ -38,7 +38,7 @@ export interface PrototypesViewTreeEntryPrototype extends PrototypesViewTreeEntr
 }
 
 export interface PrototypesViewTreeEntryNamespace extends PrototypesViewTreeEntryAbstract {
-	type: 'namespace',
+	type: 'namespace' | 'package',
 	children: { [key: string]: PrototypesViewTreeEntry }
 }
 
@@ -70,7 +70,7 @@ export class PrototypesView extends Logger {
 			if (!current[prototype.packageName]) {
 				current[prototype.packageName] = {
 					name: prototype.packageName,
-					type: 'namespace',
+					type: 'package',
 					children: {}
 				}
 			}
@@ -161,7 +161,7 @@ export class PrototypesView extends Logger {
 		}
 
 		entries.sort((a, b) => {
-			if (a.type !== b.type) return a.type === 'namespace' ? -1 : 1
+			if (a.type !== b.type) return a.type === 'namespace' || a.type === 'package' ? -1 : 1
 			return a.name.localeCompare(b.name)
 		})
 

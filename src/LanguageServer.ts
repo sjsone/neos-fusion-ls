@@ -56,7 +56,7 @@ import { AbstractLanguageFeatureParams } from './languageFeatures/LanguageFeatur
 import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokensLanguageFeature'
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
-import { PrototypesView } from './view/prototypes'
+import { PrototypesView } from './view/PrototypesView'
 
 
 const CodeActions = [
