@@ -19,30 +19,30 @@ export class YamlFileChangeHandler extends AbstractFileChangeHandler {
 	}
 
 	public handleChanged(fileEvent: FileEvent) {
-		return this.handleNodeTypeFileChanged()
+		return this.handleConfigurationFileChanged(fileEvent)
 	}
 
 	public handleCreated(fileEvent: FileEvent) {
-		return this.handleNodeTypeFileChanged()
+		return this.handleConfigurationFileChanged(fileEvent)
 	}
 
 	public handleDeleted(fileEvent: FileEvent) {
-		return this.handleNodeTypeFileChanged()
+		return this.handleConfigurationFileChanged(fileEvent)
 	}
 
-	protected async handleNodeTypeFileChanged() {
-		this.logInfo("|handleNodeTypeFileChanged")
-		if (!this.running) {
+	protected async handleConfigurationFileChanged(fileEvent: FileEvent) {
+		this.logInfo("|handleConfigurationFileChanged")
+		if (this.running) {
 			this.logInfo("  Ignored but will rerun again...")
 			this.rerunAgain = true
 			return
 		}
 
-		await this.rebuildConfiguration()
+		await this.rebuildConfiguration(fileEvent)
 		this.logInfo("  Build configuration")
 		if (this.rerunAgain) {
 			this.logInfo("  will rerun")
-			await this.rebuildConfiguration()
+			await this.rebuildConfiguration(fileEvent)
 			this.rerunAgain = false
 		}
 
@@ -50,16 +50,16 @@ export class YamlFileChangeHandler extends AbstractFileChangeHandler {
 		this.running = false
 	}
 
-	protected async rebuildConfiguration() {
+	protected async rebuildConfiguration(fileEvent: FileEvent) {
+		const diagnostics: Array<Promise<void>> = []
 		for (const fusionWorkspace of this.languageServer.fusionWorkspaces) {
-			for (const neosPackage of fusionWorkspace.neosWorkspace.getPackages().values()) {
-				neosPackage.readConfiguration()
+			if (!fusionWorkspace.isResponsibleForUri(fileEvent.uri)) {
+				continue
 			}
 
-			fusionWorkspace.neosWorkspace.configurationManager.rebuildConfiguration()
-			fusionWorkspace.languageServer.sendFlowConfiguration(fusionWorkspace.neosWorkspace.configurationManager['mergedConfiguration'])
+			diagnostics.push(fusionWorkspace.rebuildConfiguration())
 		}
 
-		return Promise.all(this.languageServer.fusionWorkspaces.map(workspace => workspace.diagnoseAllFusionFiles()))
+		return Promise.all(diagnostics)
 	}
 }

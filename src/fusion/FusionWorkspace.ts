@@ -351,6 +351,18 @@ export class FusionWorkspace extends Logger {
         return this.translationFiles.find(file => file.uri === uri)
     }
 
+    public async rebuildConfiguration() {
+        for (const neosPackage of this.neosWorkspace.getPackages().values()) {
+            neosPackage.readConfiguration()
+            neosPackage.initEelHelper()
+        }
+
+        this.neosWorkspace.configurationManager.rebuildConfiguration()
+        this.languageServer.sendFlowConfiguration(this.neosWorkspace.configurationManager['mergedConfiguration'])
+
+        await this.diagnoseAllFusionFiles()
+    }
+
     public async diagnoseAllFusionFiles() {
         this.logInfo("Diagnosing all fusion files ")
         this.filesToDiagnose = this.parsedFiles.filter(parsedFile => {

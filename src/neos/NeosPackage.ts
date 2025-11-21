@@ -73,6 +73,8 @@ export class NeosPackage extends Logger {
 		const defaultNeosFusionContext = this.configuration.get<{ [key: string]: any }>("Neos.Fusion.defaultContext")
 		if (!defaultNeosFusionContext) return undefined
 
+		const foundEelHelpers: Array<EELHelperToken> = []
+
 		this.logVerbose("Found EEL-Helpers:")
 		for (const eelHelperPrefix in defaultNeosFusionContext) {
 			const { fqcn, staticMethod } = this.extractFqcnAndStaticMethodFromDefaultContextEntry(<string>defaultNeosFusionContext[eelHelperPrefix])
@@ -84,12 +86,13 @@ export class NeosPackage extends Logger {
 					package: this,
 					regex: RegExp(`(${eelHelperPrefix.split('.').join('\\.')})(\\.\\w+)?`),
 				}
-				this.eelHelpers.push(location)
+				foundEelHelpers.push(location)
 				this.logVerbose(`|-"${eelHelperPrefix}" with ${eelHelper.methods.length} methods`)
 				this.logDebug(` \\- Methods: ${eelHelper.methods.map(method => method.name).join(", ")}`)
 			}
 		}
 
+		this.eelHelpers = foundEelHelpers
 		this.logVerbose(`Found ${this.eelHelpers.length} EEL-Helpers`)
 	}
 
