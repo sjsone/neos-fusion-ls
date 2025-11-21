@@ -206,7 +206,7 @@ export class ElementRunner extends Logger {
 				const elementSymbols = await element.documentSymbolCapability(context, params)
 				if (elementSymbols === undefined) continue
 
-				this.logInfo("  -> Test", elementSymbols)
+				// this.logInfo("  -> Test", elementSymbols)
 
 				symbols.push(...elementSymbols)
 
