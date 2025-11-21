@@ -224,6 +224,12 @@ export class LanguageServer extends Logger {
 			}
 		})
 
+		this.connection.onNotification("custom/workspaces/rebuildConfiguration", async () => {
+			for (const fusionWorkspace of this.fusionWorkspaces) {
+				await fusionWorkspace.rebuildConfiguration()
+			}
+		})
+
 		this.client.onInitialize(params)
 
 		return {
