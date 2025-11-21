@@ -1,10 +1,14 @@
 import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { CodeLens, CodeLensParams, CompletionItem, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, LocationLink, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
+import { CodeLens, CodeLensParams, Command, CompletionItem, CreateFile, DeleteFile, DocumentSymbol, DocumentSymbolParams, Hover, HoverParams, InlayHint, InlayHintParams, Location, LocationLink, PrepareRenameParams, Range, ReferenceParams, RenameFile, RenameParams, SignatureHelp, SignatureHelpParams, SymbolInformation, TextDocumentEdit, WorkspaceSymbol, WorkspaceSymbolParams } from 'vscode-languageserver';
 import { Logger } from '../common/Logging';
 import { CapabilityContext } from './CapabilityContext';
 import { LanguageFeatureContext } from './LanguageFeatureContext';
 
 export abstract class Element<Node extends AbstractNode = AbstractNode> extends Logger {
+	static SuggestCommand: Command = {
+		title: 'Trigger Suggest',
+		command: 'editor.action.triggerSuggest'
+	}
 
 	public async codeLensCapability(context: CapabilityContext<AbstractNode>, params: CodeLensParams): Promise<CodeLens[] | undefined> {
 		return undefined

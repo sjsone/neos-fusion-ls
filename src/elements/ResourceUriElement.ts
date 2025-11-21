@@ -7,10 +7,6 @@ import { Element } from './Element';
 import { NeosPackage } from '../neos/NeosPackage';
 
 export class ResourceUriElement extends Element<ResourceUriNode> {
-	static SuggestCommand: Command = {
-		title: 'Trigger Suggest',
-		command: 'editor.action.triggerSuggest'
-	}
 	public async hoverCapability(context: CapabilityContext<ResourceUriNode>, params: HoverParams): Promise<string | Hover | undefined> {
 		const node = context.foundNodeByLine!.getNode()
 		if (!(node instanceof ResourceUriNode)) return undefined
@@ -44,7 +40,7 @@ export class ResourceUriElement extends Element<ResourceUriNode> {
 					label: neosPackage.getPackageName(),
 					kind: CompletionItemKind.Module,
 					insertText: neosPackage.getPackageName() + '/',
-					command: ResourceUriElement.SuggestCommand
+					command: Element.SuggestCommand
 				}
 			})
 		}
@@ -69,7 +65,7 @@ export class ResourceUriElement extends Element<ResourceUriNode> {
 				label: thing.name,
 				kind: CompletionItemKind.Folder,
 				insertText: thing.name + '/',
-				command: ResourceUriElement.SuggestCommand
+				command: Element.SuggestCommand
 			})
 		}
 

@@ -1,4 +1,4 @@
-import { Hover, HoverParams } from 'vscode-languageserver';
+import { CompletionItem, CompletionItemKind, Hover, HoverParams } from 'vscode-languageserver';
 import { XLIFFService } from '../common/XLIFFService';
 import { TranslationShortHandNode } from '../fusion/node/TranslationShortHandNode';
 import { CapabilityContext } from './CapabilityContext';
@@ -38,5 +38,66 @@ export class TranslationElement extends Element<TranslationShortHandNode> {
 		})
 
 		return translationMarkdowns.map(translationMarkdowns => translationMarkdowns.markdown).join("\n")
+	}
+
+	public async completionCapability(context: CapabilityContext<TranslationShortHandNode>): Promise<CompletionItem[] | undefined> {
+		const foundNode = context.foundNodeByLine
+		if (foundNode === undefined) return undefined
+
+		const node = foundNode.getNode()
+		if (!(node instanceof TranslationShortHandNode)) return undefined
+
+		const workspace = context.workspaces[0]!
+
+		const shortHandIdentifier = node.getShortHandIdentifier()
+		if (!shortHandIdentifier.packageName) {
+			const completions = new Map<string, CompletionItem>()
+			for (const translationFile of workspace.translationFiles) {
+				const packageName = translationFile.neosPackage.getPackageName()
+				if (!completions.has(packageName)) completions.set(packageName, {
+					label: packageName,
+					kind: CompletionItemKind.Module,
+					insertText: packageName + ':',
+					command: Element.SuggestCommand
+				})
+			}
+			return Array.from(completions.values())
+		}
+
+		const neosPackage = workspace.neosWorkspace.getPackage(shortHandIdentifier.packageName)
+		if (!neosPackage) return []
+
+		if (!shortHandIdentifier.sourceName) {
+			const completions = new Map<string, CompletionItem>()
+			for (const translationFile of workspace.translationFiles) {
+				if (translationFile.neosPackage.getPackageName() !== shortHandIdentifier.packageName) continue
+				const source = translationFile.sourceParts.join('.')
+				if (!completions.has(source)) completions.set(source, {
+					label: source,
+					kind: CompletionItemKind.Class,
+					insertText: source + ':',
+					command: Element.SuggestCommand
+				})
+			}
+			return Array.from(completions.values())
+		}
+
+		if (!shortHandIdentifier.translationIdentifier) {
+			const completions = new Map<string, CompletionItem>()
+			for (const translationFile of workspace.translationFiles) {
+				if (translationFile.neosPackage.getPackageName() !== shortHandIdentifier.packageName) continue
+				if (translationFile.sourceParts.join('.') !== shortHandIdentifier.sourceName) continue
+				for (const transUnit of translationFile.transUnits.values()) {
+					if (!completions.has(transUnit.id)) completions.set(transUnit.id, {
+						label: transUnit.id,
+						kind: CompletionItemKind.Class,
+						insertText: transUnit.id,
+					})
+				}
+			}
+			return Array.from(completions.values())
+		}
+
+		return []
 	}
 }
