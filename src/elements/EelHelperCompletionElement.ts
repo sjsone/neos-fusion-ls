@@ -3,31 +3,34 @@ import { ObjectPathNode } from 'ts-fusion-parser/out/dsl/eel/nodes/ObjectPathNod
 import { Command, CompletionItem, CompletionItemKind, InsertTextFormat, InsertTextMode } from 'vscode-languageserver/node'
 import { CapabilityContext } from './CapabilityContext'
 import { Element } from './Element'
+import { FusionWorkspace } from '../fusion/FusionWorkspace'
+import { LinePositionedNode } from '../common/LinePositionedNode'
 
-export class EelHelperCompletionElement extends Element<ObjectPathNode> {
+export class EelHelperCompletionElement extends Element<ObjectNode> {
 	static readonly ParameterHintsCommand: Command = {
 		title: "Trigger Parameter Hints",
 		command: "editor.action.triggerParameterHints"
 	}
 
-	public async completionCapability(context: CapabilityContext<ObjectPathNode>): Promise<CompletionItem[] | undefined> {
+	constructor() {
+		super("EelHelperCompletionElement")
+	}
+
+	public async completionCapability(context: CapabilityContext<ObjectNode>): Promise<CompletionItem[] | undefined> {
 		const foundNodeByLine = context.foundNodeByLine!
 		if (!foundNodeByLine) return undefined
 
 		const node = foundNodeByLine.getNode()
-		if (!(node instanceof ObjectPathNode)) return undefined
+		if (!(node instanceof ObjectNode)) return undefined
 
 		const workspace = context.workspaces[0]!
-		const objectNode = <ObjectNode>node.parent
-		const linePositionedObjectNode = objectNode.linePositionedNode
+		const linePositionedObjectNode = node.linePositionedNode
 
 		return this.getEelHelperCompletionsForObjectPath(workspace, linePositionedObjectNode, true)
 	}
 
-	protected getEelHelperCompletionsForObjectPath(fusionWorkspace: any, foundNode: any, debug: boolean = false): CompletionItem[] {
-		const node = foundNode.getNode()
-		const objectNode = <ObjectNode>node.parent
-		const linePositionedObjectNode = objectNode.linePositionedNode
+	protected getEelHelperCompletionsForObjectPath(fusionWorkspace: FusionWorkspace, linePositionedObjectNode: LinePositionedNode<ObjectNode>, debug: boolean = false): CompletionItem[] {
+		const objectNode = linePositionedObjectNode.getNode()
 		const fullPath = objectNode.path.reduce((parts: any[], part: any) => {
 			if (!part.incomplete) parts.push(part.value)
 			return parts
