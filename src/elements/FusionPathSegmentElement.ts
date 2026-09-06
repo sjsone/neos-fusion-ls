@@ -1,12 +1,12 @@
-import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode';
-import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement';
-import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment';
-import { Hover, HoverParams } from 'vscode-languageserver';
-import { MergedArrayTreeService } from '../common/MergedArrayTreeService';
-import { NodeService } from '../common/NodeService';
-import { findParent } from '../common/util';
-import { CapabilityContext } from './CapabilityContext';
-import { Element } from './Element';
+import { AbstractNode } from 'ts-fusion-parser/out/common/AbstractNode'
+import { ObjectStatement } from 'ts-fusion-parser/out/fusion/nodes/ObjectStatement'
+import { PathSegment } from 'ts-fusion-parser/out/fusion/nodes/PathSegment'
+import { Hover, HoverParams } from 'vscode-languageserver'
+import { MergedArrayTreeService } from '../common/MergedArrayTreeService'
+import { NodeService } from '../common/NodeService'
+import { findParent } from '../common/util'
+import { CapabilityContext } from './CapabilityContext'
+import { Element } from './Element'
 
 export class FusionPathSegmentElement extends Element<PathSegment> {
 	public async hoverCapability(context: CapabilityContext<PathSegment>, params: HoverParams): Promise<string | Hover | undefined> {

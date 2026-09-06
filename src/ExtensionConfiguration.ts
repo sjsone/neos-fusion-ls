@@ -25,7 +25,7 @@ export enum DeprecationConfigurationSpecialType {
 export interface ExtensionConfigurationDiagnostics {
     enabled: boolean,
     enabledDiagnostics: {
-        [key: string]: boolean;
+        [key: string]: boolean
 
         FusionProperties: boolean,
         ResourceUris: boolean,
