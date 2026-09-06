@@ -58,6 +58,7 @@ import { SemanticTokensLanguageFeature } from './languageFeatures/SemanticTokens
 import { FusionDocument } from './main'
 import { ParsedYaml } from './neos/FlowConfigurationFile'
 import { PrototypesView } from './view/PrototypesView'
+import { PositionElement } from './elements/PositionElement'
 
 
 const CodeActions = [
@@ -107,6 +108,7 @@ export class LanguageServer extends Logger {
 		this.elementRunner.addElement(new FusionPathSegmentElement)
 		this.elementRunner.addElement(new NodeTypeElement)
 		this.elementRunner.addElement(new DocumentSymbolElement)
+		this.elementRunner.addElement(new PositionElement)
 
 		// Definition elements
 		this.elementRunner.addElement(new ConfigurationDefinitionElement)

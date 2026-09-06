@@ -41,6 +41,7 @@ export interface ExtensionConfigurationDiagnostics {
         ParserError: boolean,
         AfxWithDollarEel: boolean,
         DuplicateStatements: boolean,
+        Position: boolean
     },
     ignore: {
         folders: string[]

@@ -16,13 +16,15 @@ import { diagnoseTagNames } from './DiagnoseTagNames'
 import { diagnoseTranslationShortHand } from './DiagnoseTranslationShortHand'
 import { diagnoseAfxWithDollarEel } from './DiagnoseAfxWithDollarEel'
 import { diagnoseDuplicateStatements } from './DuplicateStatementDiagnostic'
+import { diagnosePosition } from './DiagnosePosition'
 import { DiagnosticContext } from './DiagnosticContext'
 
 export class ParsedFusionFileDiagnostics extends Logger {
 
-	protected diagnoseFunctions: Array<(parsedFusionFile: ParsedFusionFile) => Diagnostic[] | Promise<Diagnostic[]>> = []
+	protected diagnoseFunctions: Array<(parsedFusionFile: ParsedFusionFile, context: DiagnosticContext) => Diagnostic[] | Promise<Diagnostic[]>> = []
 
 	constructor(
+		protected configuration: ExtensionConfigurationDiagnostics,
 		protected context: DiagnosticContext
 	) {
 		super()
@@ -41,6 +43,7 @@ export class ParsedFusionFileDiagnostics extends Logger {
 		if (configuration.enabledDiagnostics.ParserError) this.diagnoseFunctions.push(diagnoseParserError)
 		if (configuration.enabledDiagnostics.AfxWithDollarEel) this.diagnoseFunctions.push(diagnoseAfxWithDollarEel)
 		if (configuration.enabledDiagnostics.DuplicateStatements) this.diagnoseFunctions.push(diagnoseDuplicateStatements)
+		if (configuration.enabledDiagnostics.Position) this.diagnoseFunctions.push(diagnosePosition)
 
 		const enabledDiagnosticsNames = Object.keys(configuration.enabledDiagnostics).filter(name => configuration.enabledDiagnostics[name])
 
