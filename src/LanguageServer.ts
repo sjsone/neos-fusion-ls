@@ -338,4 +338,3 @@ export class LanguageServer extends Logger {
 		return actions
 	}
 }
-

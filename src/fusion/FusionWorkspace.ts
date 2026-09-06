@@ -97,7 +97,7 @@ export class FusionWorkspace extends Logger {
         }
         await this.languageServer.sendProgressNotificationFinish("init_diagnose_files")
 
-        const endInMS = (process.hrtime.bigint() - begin) / 1000000n;
+        const endInMS = (process.hrtime.bigint() - begin) / 1000000n
         this.logInfo(`Initial diagnostics took: ${endInMS}ms`)
     }
 
@@ -337,7 +337,12 @@ export class FusionWorkspace extends Logger {
     }
 
     getParsedFileByUri(uri: string) {
-        return this.parsedFiles.find(file => file.uri === uri)
+        const parsedFile = this.parsedFiles.find(file => file.uri === uri)
+        if (parsedFile === undefined) {
+            this.logInfo(`Could not find parsed file for URI: ${uri}`)
+        }
+
+        return parsedFile
     }
 
     getParsedFileByContextPathAndFilename(contextPathAndFilename: string) {
