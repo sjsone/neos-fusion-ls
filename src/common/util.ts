@@ -143,6 +143,11 @@ export function pathToUri(path: string) {
     return URI.file(path).toString()
 }
 
+export function isPathEqualOrInside(parentPath: string, candidatePath: string) {
+    const relativePath = NodePath.relative(NodePath.resolve(parentPath), NodePath.resolve(candidatePath))
+    return relativePath === '' || (!relativePath.startsWith(`..${NodePath.sep}`) && relativePath !== '..' && !NodePath.isAbsolute(relativePath))
+}
+
 export function getPrototypeNameFromNode(node: AbstractNode) {
     if (node instanceof FusionObjectValue) return node.value
     if (node instanceof PrototypePathSegment) return node.identifier
