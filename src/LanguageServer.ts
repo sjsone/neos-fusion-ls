@@ -46,6 +46,7 @@ import { TagAttributeDefinitionElement } from './elements/TagAttributeDefinition
 import { TagCompletionElement } from './elements/TagCompletionElement'
 import { TranslationElement } from './elements/TranslationElement'
 import { AbstractFileChangeHandler } from './fileChangeHandler/AbstractFileChangeHandler'
+import { ComposerJsonFileChangeHandler } from './fileChangeHandler/ComposerJsonFileChangeHandler'
 import { FusionFileChangeHandler } from './fileChangeHandler/FusionFileChangeHandler'
 import { PhpFileChangeHandler } from './fileChangeHandler/PhpFileChangeHandler'
 import { XlfFileChangeHandler } from './fileChangeHandler/XlfFileChangeHandler'
@@ -133,6 +134,7 @@ export class LanguageServer extends Logger {
 		// this.addFunctionalityInstance(InlayHintLanguageFeature)
 		this.addFunctionalityInstance(SemanticTokensLanguageFeature)
 
+		this.addFunctionalityInstance(ComposerJsonFileChangeHandler)
 		this.addFunctionalityInstance(FusionFileChangeHandler)
 		this.addFunctionalityInstance(PhpFileChangeHandler)
 		this.addFunctionalityInstance(XlfFileChangeHandler)
@@ -295,7 +297,7 @@ export class LanguageServer extends Logger {
 	}
 
 	public sendRootComposerJsonNotFound(path: string) {
-		return this.connection.sendNotification("custom/error/rootComposerNotFound", { path });
+		return this.connection.sendNotification("custom/error/rootComposerNotFound", { path })
 	}
 
 	public sendProgressNotificationFinish(id: string) {

@@ -61,6 +61,12 @@ class ComposerService extends Logger {
 		return remaining.concat(sortedPackagePaths)
 	}
 
+	public reset() {
+		this.parsedComposerJsonByName = {}
+		this.packagePathByName = {}
+		this.alreadyParsed = []
+	}
+
 	getComposerJsonByPath(path: string) {
 		const nameIndex = Object.values(this.packagePathByName).findIndex(packagePath => packagePath === path)
 		if (nameIndex === undefined) return undefined

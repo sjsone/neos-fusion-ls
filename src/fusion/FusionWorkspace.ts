@@ -101,6 +101,12 @@ export class FusionWorkspace extends Logger {
         this.logInfo(`Initial diagnostics took: ${endInMS}ms`)
     }
 
+    public async reinitialize() {
+        this.logInfo(`Reinitializing workspace "${this.name}" due to composer.json change`)
+        ComposerService.reset()
+        await this.init(this.configuration)
+    }
+
     protected async initPackagesPaths() {
         const workspacePath = uriToPath(this.uri)
         const packagesPaths = ComposerService.getComposerPackagePaths(this, this.configuration)
@@ -151,15 +157,18 @@ export class FusionWorkspace extends Logger {
             this.initPackageRootFusionFiles(neosPackage)
         }
 
-        FilePatternResolver.addUriProtocolStrategy('nodetypes:', (uri, filePattern, contextPathAndFilename) => {
-            if (uri.protocol !== "nodetypes:") return undefined
-            if (!contextPathAndFilename) return undefined
+        if (!this.filePatternResolverInitialized) {
+            FilePatternResolver.addUriProtocolStrategy('nodetypes:', (uri, filePattern, contextPathAndFilename) => {
+                if (uri.protocol !== "nodetypes:") return undefined
+                if (!contextPathAndFilename) return undefined
 
-            const neosPackage = this.neosWorkspace.getPackage(uri.hostname)
-            if (!neosPackage) return undefined
+                const neosPackage = this.neosWorkspace.getPackage(uri.hostname)
+                if (!neosPackage) return undefined
 
-            return NodePath.join(neosPackage["path"], "NodeTypes", uri.pathname)
-        })
+                return NodePath.join(neosPackage["path"], "NodeTypes", uri.pathname)
+            })
+            this.filePatternResolverInitialized = true
+        }
     }
 
     public initPackageRootFusionFiles(neosPackage: NeosPackage) {
