@@ -12,7 +12,7 @@ import { ComposerService } from '../common/ComposerService'
 import { LinePositionedNode } from '../common/LinePositionedNode'
 import { LogService, Logger } from '../common/Logging'
 import { TranslationService } from '../common/TranslationService'
-import { getFiles, pathToUri, uriToPath } from '../common/util'
+import { getFiles, isPathEqualOrInside, pathToUri, uriToPath } from '../common/util'
 import { ParsedFusionFileDiagnostics } from '../diagnostics/ParsedFusionFileDiagnostics'
 import { NeosPackage } from '../neos/NeosPackage'
 import { NeosWorkspace } from '../neos/NeosWorkspace'
@@ -50,6 +50,7 @@ export class FusionWorkspace extends Logger {
     protected selectedFlowContextName?: string = "Development"
 
     protected filePatternResolverInitialized: boolean = false
+    protected initialized: boolean = false
 
     constructor(name: string, uri: string, languageServer: LanguageServer) {
         super(name)
@@ -68,11 +69,16 @@ export class FusionWorkspace extends Logger {
         return this.configuration
     }
 
+    isInitialized() {
+        return this.initialized
+    }
+
     getUri() {
         return this.uri
     }
 
     public async init(configuration: ExtensionConfiguration) {
+        this.initialized = false
         this.configuration = configuration
         this.clear()
         this.parsedFusionFileDiagnostics = new ParsedFusionFileDiagnostics(configuration.diagnostics, {
@@ -103,6 +109,7 @@ export class FusionWorkspace extends Logger {
 
         const endInMS = (process.hrtime.bigint() - begin) / 1000000n
         this.logInfo(`Initial diagnostics took: ${endInMS}ms`)
+        this.initialized = true
     }
 
     public async reinitialize() {
@@ -266,23 +273,37 @@ export class FusionWorkspace extends Logger {
         this.languageServer.sendBusyDispose('parsingFusionMergedArrayTree')
     }
 
-    addParsedFileFromPath(fusionFilePath: string, neosPackage: NeosPackage) {
+    addParsedFileFromPath(fusionFilePath: string, neosPackage: NeosPackage, text?: string) {
+        const uri = pathToUri(fusionFilePath)
+        const existingParsedFile = this.findParsedFileByUri(uri)
+        if (existingParsedFile) {
+            existingParsedFile.neosPackage = neosPackage
+            return this.initParsedFile(existingParsedFile, text) ? existingParsedFile : undefined
+        }
+
         try {
-            this.logDebug("Trying to add parsed file from path", fusionFilePath, pathToUri(fusionFilePath))
-            const parsedFile = new ParsedFusionFile(pathToUri(fusionFilePath), this, neosPackage)
-            this.initParsedFile(parsedFile)
+            this.logDebug("Trying to add parsed file from path", fusionFilePath, uri)
+            const parsedFile = new ParsedFusionFile(uri, this, neosPackage)
+            if (!this.initParsedFile(parsedFile, text)) return undefined
             this.parsedFiles.push(parsedFile)
+            return parsedFile
         } catch (e) {
-            this.filesWithErrors.push(pathToUri(fusionFilePath))
+            if (!this.filesWithErrors.includes(uri)) this.filesWithErrors.push(uri)
+            return undefined
         }
     }
 
     removeParsedFile(uri: string) {
-        const parsedFileIndex = this.parsedFiles.findIndex(parsedFile => parsedFile.uri === uri)
+        const parsedFile = this.findParsedFileByUri(uri)
+        const parsedFileIndex = parsedFile ? this.parsedFiles.indexOf(parsedFile) : -1
         if (parsedFileIndex > -1) {
             this.parsedFiles.splice(parsedFileIndex, 1)
             this.logDebug(`Removed ParsedFusionFile ${uri}`)
         }
+
+        this.filesToDiagnose = this.filesToDiagnose.filter(file => file !== parsedFile)
+        this.filesWithErrors = this.filesWithErrors.filter(errorUri => !this.isSameFileUri(errorUri, uri))
+        return parsedFileIndex > -1
     }
 
     protected isFileInIgnoredDiagnosticsFolder(parsedFile: ParsedFusionFile): boolean {
@@ -290,18 +311,18 @@ export class FusionWorkspace extends Logger {
         const workspacePath = NodePath.resolve(uriToPath(this.uri), this.configuration.folders.root)
         const foundIgnoredFolder = this.configuration.diagnostics.ignore.folders.find(path => {
             const ignoredFolderPath = NodePath.resolve(workspacePath, path)
-            return filePath.startsWith(ignoredFolderPath)
+            return isPathEqualOrInside(ignoredFolderPath, filePath)
         })
         return foundIgnoredFolder !== undefined
     }
 
     initParsedFile(parsedFile: ParsedFusionFile, text?: string) {
-        if (this.filesWithErrors.includes(parsedFile.uri)) return false
+        this.filesWithErrors = this.filesWithErrors.filter(uri => !this.isSameFileUri(uri, parsedFile.uri))
 
         try {
             parsedFile.clear()
             if (!parsedFile.init(text)) {
-                this.filesWithErrors.push(parsedFile.uri)
+                if (!this.filesWithErrors.includes(parsedFile.uri)) this.filesWithErrors.push(parsedFile.uri)
                 return false
             }
 
@@ -313,16 +334,24 @@ export class FusionWorkspace extends Logger {
             return true
         } catch (error) {
             this.logError("While initializing parsed file: ", error)
-            this.filesWithErrors.push(parsedFile.uri)
+            if (!this.filesWithErrors.includes(parsedFile.uri)) this.filesWithErrors.push(parsedFile.uri)
         }
 
         return false
     }
 
     async updateFileByChange(change: TextDocumentChangeEvent<TextDocument>) {
-        const file = this.getParsedFileByUri(change.document.uri)
-        if (file === undefined) return
-        this.initParsedFile(file, change.document.getText())
+        let file = this.findParsedFileByUri(change.document.uri)
+        if (file === undefined) {
+            const neosPackage = this.neosWorkspace.getPackageByUri(change.document.uri)
+            if (!neosPackage) return
+            file = this.addParsedFileFromPath(uriToPath(change.document.uri), neosPackage, change.document.getText())
+            if (!file) return
+            this.initPackageRootFusionFiles(neosPackage)
+        } else if (!this.initParsedFile(file, change.document.getText())) {
+            return
+        }
+
         this.buildMergedArrayTree("updateFileByChange")
         file.runPostProcessing()
 
@@ -337,11 +366,11 @@ export class FusionWorkspace extends Logger {
     }
 
     isResponsibleForUri(uri: string) {
-        return uri.startsWith(this.uri)
+        return isPathEqualOrInside(uriToPath(this.uri), uriToPath(uri))
     }
 
     getParsedFileByUri(uri: string) {
-        const parsedFile = this.parsedFiles.find(file => file.uri === uri)
+        const parsedFile = this.findParsedFileByUri(uri)
         if (parsedFile === undefined) {
             this.logInfo(`Could not find parsed file for URI: ${uri}`)
         }
@@ -349,8 +378,26 @@ export class FusionWorkspace extends Logger {
         return parsedFile
     }
 
+    hasParsedFileByUri(uri: string) {
+        return this.findParsedFileByUri(uri) !== undefined
+    }
+
+    protected findParsedFileByUri(uri: string) {
+        return this.parsedFiles.find(file => this.isSameFileUri(file.uri, uri))
+    }
+
+    protected isSameFileUri(firstUri: string, secondUri: string) {
+        return this.normalizeFilePath(uriToPath(firstUri)) === this.normalizeFilePath(uriToPath(secondUri))
+    }
+
     getParsedFileByContextPathAndFilename(contextPathAndFilename: string) {
-        return this.parsedFiles.find(file => file.uri.endsWith(contextPathAndFilename))
+        const contextPath = this.normalizeFilePath(contextPathAndFilename)
+        return this.parsedFiles.find(file => this.normalizeFilePath(uriToPath(file.uri)) === contextPath)
+    }
+
+    protected normalizeFilePath(filePath: string) {
+        const normalizedPath = NodePath.resolve(filePath)
+        return process.platform === 'win32' ? normalizedPath.toLowerCase() : normalizedPath
     }
 
     getNodesByType<T extends new (...args: any[]) => AbstractNode>(type: T) {
@@ -389,12 +436,18 @@ export class FusionWorkspace extends Logger {
         return this.processFilesToDiagnose()
     }
 
+    public async diagnosePendingFusionFiles() {
+        return this.processFilesToDiagnose()
+    }
+
     protected async processFilesToDiagnose(timeEachFileDiagnostic: boolean = false) {
         const randomDiagnoseRun = Math.round(Math.random() * 100)
-        this.logDebug(`<${randomDiagnoseRun}> Will diagnose ${this.filesToDiagnose.length} files`)
+        const filesToDiagnose = this.filesToDiagnose
+        this.filesToDiagnose = []
+        this.logDebug(`<${randomDiagnoseRun}> Will diagnose ${filesToDiagnose.length} files`)
         this.languageServer.sendBusyCreate('diagnostics')
 
-        for (const parsedFile of this.filesToDiagnose) {
+        for (const parsedFile of filesToDiagnose) {
             // const begin = process.hrtime.bigint()
             const diagnostics = await this.parsedFusionFileDiagnostics.diagnose(parsedFile)
             // const end = process.hrtime.bigint() - begin
@@ -408,14 +461,18 @@ export class FusionWorkspace extends Logger {
 
         this.logDebug(`<${randomDiagnoseRun}>...finished`)
         this.languageServer.sendBusyDispose('diagnostics')
-
-        this.filesToDiagnose = []
     }
 
     protected clear() {
+        this.initialized = false
         this.parsedFiles = []
         this.filesWithErrors = []
+        this.filesToDiagnose = []
         this.translationFiles = []
+        this.fusionParser.rootFusionPaths.clear()
+        this.mergedArrayTree = {}
+        this.fusionRuntimeConfiguration = new RuntimeConfiguration({})
+        this.fusionRuntimeConfigurationCache = {}
     }
 
     protected handleError(error: Error) {

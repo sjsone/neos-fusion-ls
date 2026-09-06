@@ -2,7 +2,7 @@ import * as NodeFs from "fs"
 import * as NodePath from "path"
 import { ConfigurationManager } from '../ConfigurationManager'
 import { Logger } from '../common/Logging'
-import { uriToPath } from '../common/util'
+import { isPathEqualOrInside, uriToPath } from '../common/util'
 import { FusionWorkspace } from '../fusion/FusionWorkspace'
 import { FlowConfiguration } from './FlowConfiguration'
 import { EELHelperToken, NeosPackage } from './NeosPackage'
@@ -76,11 +76,9 @@ export class NeosWorkspace extends Logger {
 
 	getPackageByUri(uri: string): NeosPackage | undefined {
 		const uriPath = uriToPath(uri)
-		for (const neosPackage of this.packages.values()) {
-			if (uriPath.startsWith(neosPackage.path)) return neosPackage
-		}
-
-		return undefined
+		return Array.from(this.packages.values())
+			.filter(neosPackage => isPathEqualOrInside(neosPackage.path, uriPath))
+			.sort((a, b) => b.path.length - a.path.length)[0]
 	}
 
 	getEelHelperFromFullyQualifiedClassNameWithStaticMethod(fullyQualifiedClassName: string, staticMethod?: string) {

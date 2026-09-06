@@ -85,6 +85,10 @@ export class LanguageServer extends Logger {
 	protected functionalityInstances: Map<new (...args: any[]) => AbstractFunctionality, AbstractFunctionality> = new Map()
 	protected fileChangeHandlerInstances: Map<new (...args: any[]) => AbstractFileChangeHandler, AbstractFileChangeHandler> = new Map()
 
+	protected workspaceInitialization: Promise<void> = Promise.resolve()
+	protected watchedFileChanges: Promise<void> = Promise.resolve()
+	protected pendingDocuments: Map<string, FusionDocument> = new Map()
+
 	public readonly elementRunner: ElementRunner
 
 	constructor(protected connection: _Connection, protected documents: TextDocuments<FusionDocument>, public client: Client) {
@@ -159,7 +163,9 @@ export class LanguageServer extends Logger {
 	}
 
 	public getWorkspaceForFileUri = (uri: string): FusionWorkspace | undefined => {
-		return this.fusionWorkspaces.find(w => w.isResponsibleForUri(uri))
+		return this.fusionWorkspaces
+			.filter(workspace => workspace.isResponsibleForUri(uri))
+			.sort((a, b) => uriToPath(b.uri).length - uriToPath(a.uri).length)[0]
 	}
 
 	public getClientCapabilities(): ClientCapabilities {
@@ -167,19 +173,33 @@ export class LanguageServer extends Logger {
 	}
 
 	public async onDidChangeContent(change: TextDocumentChangeEvent<FusionDocument>) {
+		await this.workspaceInitialization
 		const workspace = this.getWorkspaceForFileUri(change.document.uri)
 		if (workspace === undefined) return null
+		if (!workspace.isInitialized()) {
+			this.pendingDocuments.set(change.document.uri, change.document)
+			return null
+		}
 
 		await workspace.updateFileByChange(change)
 		this.logVerbose(`Document changed: ${change.document.uri.replace(workspace.getUri(), "")}`)
 	}
 
 	public async onDidOpen(event: TextDocumentChangeEvent<FusionDocument>) {
+		await this.workspaceInitialization
 		const workspace = this.getWorkspaceForFileUri(event.document.uri)
 		if (workspace === undefined) return null
+		if (!workspace.isInitialized()) {
+			this.pendingDocuments.set(event.document.uri, event.document)
+			return null
+		}
 
-		// TODO: Check if new file and if it is add and initialize it
+		if (!workspace.hasParsedFileByUri(event.document.uri)) await workspace.updateFileByChange(event)
 		this.logVerbose(`Document opened: ${event.document.uri.replace(workspace.getUri(), "")}`)
+	}
+
+	public getOpenDocument(uri: string) {
+		return this.documents.get(uri)
 	}
 
 	public onInitialize(params: InitializeParams): InitializeResult {
@@ -320,17 +340,42 @@ export class LanguageServer extends Logger {
 	}
 
 	public async onDidChangeConfiguration(params: DidChangeConfigurationParams) {
-		return this.client.onDidChangeConfiguration(params)
+		this.workspaceInitialization = this.workspaceInitialization
+			.catch(error => this.logError("Previous workspace initialization failed: ", error))
+			.then(async () => {
+				await this.client.onDidChangeConfiguration(params)
+				const pendingDocuments = Array.from(this.pendingDocuments.values())
+				this.pendingDocuments.clear()
+				for (const pendingDocument of pendingDocuments) {
+					const document = this.documents.get(pendingDocument.uri)
+					if (!document) continue
+
+					const workspace = this.getWorkspaceForFileUri(document.uri)
+					if (!workspace?.isInitialized()) continue
+
+					await workspace.updateFileByChange({ document })
+				}
+			})
+		return this.workspaceInitialization
 	}
 
-	public async onDidChangeWatchedFiles(params: DidChangeWatchedFilesParams) {
-		for (const change of params.changes) {
-			this.logVerbose(`Watched: (${Object.keys(FileChangeType)[Object.values(FileChangeType).indexOf(change.type)]}) ${change.uri}`)
-			for (const fileChangeHandlerType of FileChangeHandlerTypes) {
-				const fileChangeHandler = this.getFunctionalityInstance(fileChangeHandlerType)
-				if (fileChangeHandler) await fileChangeHandler.tryToHandle(change)
-			}
-		}
+	public onDidChangeWatchedFiles(params: DidChangeWatchedFilesParams) {
+		this.watchedFileChanges = this.watchedFileChanges
+			.catch(error => this.logError("Previous watched file change failed: ", error))
+			.then(async () => {
+				await this.workspaceInitialization
+				for (const change of params.changes) {
+					const workspace = this.getWorkspaceForFileUri(change.uri)
+					if (workspace && !workspace.isInitialized()) continue
+
+					this.logVerbose(`Watched: (${Object.keys(FileChangeType)[Object.values(FileChangeType).indexOf(change.type)]}) ${change.uri}`)
+					for (const fileChangeHandlerType of FileChangeHandlerTypes) {
+						const fileChangeHandler = this.getFunctionalityInstance(fileChangeHandlerType)
+						if (fileChangeHandler) await fileChangeHandler.tryToHandle(change)
+					}
+				}
+			})
+		return this.watchedFileChanges
 	}
 
 	public async onCodeAction(params: CodeActionParams) {

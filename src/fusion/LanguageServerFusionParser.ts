@@ -97,9 +97,8 @@ export class LanguageServerFusionParser extends Parser {
 	}
 
 	protected getParsedFusionFile(contextPathAndFilename: string, sourceCode: string | undefined = undefined) {
-		const sanitizedContextPathAndFilename = contextPathAndFilename.replace(":", "%3A")
-		const parsedFile = this.fusionWorkspace.getParsedFileByContextPathAndFilename(sanitizedContextPathAndFilename)
-		// if (!parsedFile) throw Error(`TODO: handle unknown but expected ParsedFusionFile: ${contextPathAndFilename}/${sanitizedContextPathAndFilename} // \n ${sourceCode}`)
+		const parsedFile = this.fusionWorkspace.getParsedFileByContextPathAndFilename(contextPathAndFilename)
+		// if (!parsedFile) throw Error(`TODO: handle unknown but expected ParsedFusionFile: ${contextPathAndFilename} // \n ${sourceCode}`)
 		if (!parsedFile) return {
 			fusionFile: new NonExistingFusionFile(contextPathAndFilename),
 			ignoredErrorsByParser: [] as Error[]
