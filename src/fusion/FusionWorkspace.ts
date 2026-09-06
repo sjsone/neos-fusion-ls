@@ -49,6 +49,8 @@ export class FusionWorkspace extends Logger {
 
     protected selectedFlowContextName?: string = "Development"
 
+    protected filePatternResolverInitialized: boolean = false
+
     constructor(name: string, uri: string, languageServer: LanguageServer) {
         super(name)
         this.name = name
