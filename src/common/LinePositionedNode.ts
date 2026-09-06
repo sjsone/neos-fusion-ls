@@ -11,7 +11,7 @@ export interface LinePosition {
 declare module 'ts-fusion-parser/out/common/AbstractNode' {
 	interface AbstractNode {
 		// @ts-expect-error Because `this` cannot be resolved correctly by Typescript
-		linePositionedNode: LinePositionedNode<typeof this>;
+		linePositionedNode: LinePositionedNode<typeof this>
 	}
 }
 
