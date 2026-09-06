@@ -69,6 +69,7 @@ const CodeActions = [
 ]
 
 const FileChangeHandlerTypes: Array<new (...args: any[]) => AbstractFileChangeHandler> = [
+	ComposerJsonFileChangeHandler,
 	FusionFileChangeHandler,
 	PhpFileChangeHandler,
 	XlfFileChangeHandler,
