@@ -73,7 +73,9 @@ export class FusionWorkspace extends Logger {
     public async init(configuration: ExtensionConfiguration) {
         this.configuration = configuration
         this.clear()
-        this.parsedFusionFileDiagnostics = new ParsedFusionFileDiagnostics(configuration.diagnostics)
+        this.parsedFusionFileDiagnostics = new ParsedFusionFileDiagnostics(configuration.diagnostics, {
+            clientCapabilities: this.languageServer.getClientCapabilities()
+        })
 
         try {
             await this.initPackagesPaths()

@@ -1,4 +1,4 @@
-import { CodeAction, CodeActionParams } from 'vscode-languageserver'
+import { ClientCapabilities, CodeAction, CodeActionParams } from 'vscode-languageserver'
 import {
 	DidChangeConfigurationParams,
 	DidChangeWatchedFilesParams,
@@ -158,6 +158,10 @@ export class LanguageServer extends Logger {
 
 	public getWorkspaceForFileUri = (uri: string): FusionWorkspace | undefined => {
 		return this.fusionWorkspaces.find(w => w.isResponsibleForUri(uri))
+	}
+
+	public getClientCapabilities(): ClientCapabilities {
+		return this.clientCapabilityService.clientCapabilities
 	}
 
 	public async onDidChangeContent(change: TextDocumentChangeEvent<FusionDocument>) {

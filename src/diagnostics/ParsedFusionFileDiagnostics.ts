@@ -16,13 +16,14 @@ import { diagnoseTagNames } from './DiagnoseTagNames'
 import { diagnoseTranslationShortHand } from './DiagnoseTranslationShortHand'
 import { diagnoseAfxWithDollarEel } from './DiagnoseAfxWithDollarEel'
 import { diagnoseDuplicateStatements } from './DuplicateStatementDiagnostic'
+import { DiagnosticContext } from './DiagnosticContext'
 
 export class ParsedFusionFileDiagnostics extends Logger {
 
 	protected diagnoseFunctions: Array<(parsedFusionFile: ParsedFusionFile) => Diagnostic[] | Promise<Diagnostic[]>> = []
 
 	constructor(
-		protected configuration: ExtensionConfigurationDiagnostics
+		protected context: DiagnosticContext
 	) {
 		super()
 
@@ -51,7 +52,7 @@ export class ParsedFusionFileDiagnostics extends Logger {
 
 		for (const diagnoseFunction of this.diagnoseFunctions) {
 			try {
-				diagnostics.push(...await diagnoseFunction(parsedFusionFile))
+				diagnostics.push(...await diagnoseFunction(parsedFusionFile, this.context))
 			} catch (error) {
 				if (LogService.isLogLevel(LoggingLevel.Verbose)) {
 					Logger.LogNameAndLevel(LoggingLevel.Verbose.toUpperCase(), `ParsedFusionFileDiagnostics:${diagnoseFunction.name}`, 'ERROR:', error)
