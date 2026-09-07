@@ -86,7 +86,7 @@ export class FlowConfiguration extends Logger {
 		const nodeTypeDefinitionsFolderPath = NodePath.join(this.folderPath, 'NodeTypes')
 		if (!NodeFs.existsSync(nodeTypeDefinitionsFolderPath)) return
 
-		for (const nodeTypeFilePath of getFiles(nodeTypeDefinitionsFolderPath, ".yaml")) {
+		for (const nodeTypeFilePath of getFiles(nodeTypeDefinitionsFolderPath, [".yaml", ".yml"])) {
 			const configurationFile = new FlowConfigurationFile(nodeTypeFilePath, FlowConfigurationFileType.NodeTypes)
 			this.nodeTypeDefinitions.push(...configurationFile.parseNodeTypeDefinitions())
 			this.configurationFiles.push(configurationFile)
@@ -109,7 +109,7 @@ export class FlowConfiguration extends Logger {
 		for (const settingsFolderPath of settingsFolderPaths) {
 			if (!NodeFs.existsSync(settingsFolderPath)) continue
 
-			for (const configurationFilePath of getFiles(settingsFolderPath, ".yaml", false)) {
+			for (const configurationFilePath of getFiles(settingsFolderPath, [".yaml", ".yml"], false)) {
 				const configurationFile = new FlowConfigurationFile(configurationFilePath)
 				if (configurationFile.isOfType(FlowConfigurationFileType.NodeTypes) && includeNodeTypes) {
 					this.nodeTypeDefinitions.push(...configurationFile.parseNodeTypeDefinitions())
