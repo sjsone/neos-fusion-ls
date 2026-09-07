@@ -73,7 +73,8 @@ export class ConfigurationManager extends Logger {
 		for (const entry of dirEntries) {
 			if (entry.isSymbolicLink() || entry.name.startsWith(".")) continue
 			const entryPath = NodePath.join(path, entry.name)
-			if (entry.isFile() && entry.name.endsWith(".yaml") && entry.name.startsWith("Settings")) {
+			const isYamlFile = entry.name.endsWith(".yaml") || entry.name.endsWith(".yml")
+			if (entry.isFile() && isYamlFile && entry.name.startsWith("Settings")) {
 				context.files.push(entryPath)
 			}
 
