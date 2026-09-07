@@ -38,7 +38,7 @@ export class FlowConfigurationFile extends Logger {
 
 	constructor(protected path: string, protected type: FlowConfigurationFileType = FlowConfigurationFileType.Unknown) {
 		const fileName = NodePath.basename(path)
-		super(fileName.replace(".yaml", ""))
+		super(fileName.replace(/\.ya?ml$/, ""))
 
 		this.logDebug(`Created ${path}`)
 
