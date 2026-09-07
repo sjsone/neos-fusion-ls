@@ -38,7 +38,7 @@ export class ConfigurationManager extends Logger {
 	addToMergedConfiguration(newConfiguration: ParsedYaml) {
 		try {
 			if (!newConfiguration || typeof newConfiguration !== "object") return
-			const mergedConfiguration = <ParsedYaml>mergeObjects(newConfiguration, <{ [key: string]: any; }>this.mergedConfiguration)
+			const mergedConfiguration = <ParsedYaml>mergeObjects(newConfiguration, <{ [key: string]: any }>this.mergedConfiguration)
 			this.mergedConfiguration = mergedConfiguration ?? this.mergedConfiguration
 		} catch (error) {
 			// console.log(error)
