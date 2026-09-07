@@ -1,39 +1,49 @@
-import { FileChangeType, FileEvent } from 'vscode-languageserver'
+import { FileEvent } from 'vscode-languageserver'
+import { CacheManager } from '../cache/CacheManager'
 import { AbstractFileChangeHandler } from './AbstractFileChangeHandler'
-import { clearLineDataCacheForFile, uriToPath } from '../common/util'
+import { clearLineDataCacheForFile, isPathEqualOrInside, uriToPath } from '../common/util'
 
 export class PhpFileChangeHandler extends AbstractFileChangeHandler {
 	canHandleFileEvent(fileEvent: FileEvent): boolean {
-		this.logVerbose(`canHandleFileEvent: ${fileEvent.type === FileChangeType.Changed}`)
-		return fileEvent.type === FileChangeType.Changed && fileEvent.uri.endsWith(".php")
+		return fileEvent.uri.endsWith(".php")
 	}
 
 	public async handleChanged(fileEvent: FileEvent) {
-		clearLineDataCacheForFile(fileEvent.uri)
-		this.logVerbose(`handle change of file: ${fileEvent.uri}`)
-
-		let wasAffected: boolean = false
-		for (const workspace of this.languageServer.fusionWorkspaces) {
-			for (const neosPackage of workspace.neosWorkspace.getPackages().values()) {
-				for (const namespace of neosPackage.namespaces.values()) {
-					if (namespace.clearKnownForFileUri(fileEvent.uri)) {
-						wasAffected = true
-					}
-				}
-			}
-		}
-
-		// FIXME: diagnosing fusion files has no effect because each PhpClassMethodNode holds its own reference to the PhpClassMethod. The files should be re-processed instead but for that we need the list of potentially affected nodes instead of all
-		if (wasAffected) {
-			Promise.all(this.languageServer.fusionWorkspaces.map(workspace => workspace.diagnoseAllFusionFiles()))
-		}
+		return this.handlePhpFileChange(fileEvent)
 	}
 
 	public async handleCreated(fileEvent: FileEvent) {
-		this.logError('handleCreated: Method not implemented.')
+		return this.handlePhpFileChange(fileEvent)
 	}
 
 	public async handleDeleted(fileEvent: FileEvent) {
-		this.logError('handleDeleted: Method not implemented.')
+		return this.handlePhpFileChange(fileEvent)
+	}
+
+	protected async handlePhpFileChange(fileEvent: FileEvent) {
+		clearLineDataCacheForFile(fileEvent.uri)
+		this.logVerbose(`handle PHP file event: ${fileEvent.uri}`)
+		const filePath = uriToPath(fileEvent.uri)
+
+		for (const workspace of this.languageServer.fusionWorkspaces) {
+			let workspaceWasAffected = false
+			for (const neosPackage of workspace.neosWorkspace.getPackages().values()) {
+				for (const namespace of neosPackage.namespaces.values()) {
+					if (isPathEqualOrInside(namespace.path, filePath)) workspaceWasAffected = true
+					namespace.clearKnownForFileUri(fileEvent.uri)
+				}
+			}
+
+			if (!workspaceWasAffected) continue
+
+			workspace.neosWorkspace.initEelHelpers()
+			for (const parsedFile of workspace.parsedFiles) {
+				const document = this.languageServer.getOpenDocument(parsedFile.uri)
+				workspace.initParsedFile(parsedFile, document?.getText())
+				CacheManager.clearByFusionFileUri(parsedFile.uri)
+			}
+			for (const parsedFile of workspace.parsedFiles) parsedFile.runPostProcessing()
+			await workspace.diagnoseAllFusionFiles()
+		}
 	}
 }
