@@ -15,7 +15,7 @@ export class YamlFileChangeHandler extends AbstractFileChangeHandler {
 
 	canHandleFileEvent(fileEvent: FileEvent): boolean {
 		// TODO: check if yaml file is relevant (FlowConfiguration.responsibleFor(fileEvent.uri) ?)
-		return fileEvent.uri.endsWith(".yaml")
+		return fileEvent.uri.endsWith(".yaml") || fileEvent.uri.endsWith(".yml")
 	}
 
 	public handleChanged(fileEvent: FileEvent) {
